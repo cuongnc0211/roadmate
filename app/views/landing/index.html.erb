@@ -1,0 +1,447 @@
+<% content_for :title, "RoadMate — Bạn đồng hành trên đường" %>
+
+<%# ===== NAVBAR ===== %>
+<nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <%# Logo %>
+    <a href="/" class="flex items-center gap-2 cursor-pointer">
+      <div class="w-8 h-8 bg-[#3B82F6] rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <span class="text-lg font-700 text-[#1E293B]" style="font-weight: 700;">RoadMate</span>
+    </a>
+
+    <%# Desktop nav actions %>
+    <div class="hidden sm:flex items-center gap-3">
+      <a href="/login" class="text-sm font-500 text-[#475569] hover:text-[#3B82F6] transition-colors duration-200 cursor-pointer px-3 py-2">
+        Đăng nhập
+      </a>
+      <a href="/register" class="text-sm font-600 bg-[#3B82F6] hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 cursor-pointer" style="font-weight: 600;">
+        Đăng ký miễn phí
+      </a>
+    </div>
+
+    <%# Mobile hamburger placeholder %>
+    <button class="sm:hidden p-2 rounded-lg text-[#475569] hover:bg-gray-100 cursor-pointer" aria-label="Menu">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<%# ===== HERO — SEARCH FIRST ===== %>
+<section class="pt-16 min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#EFF6FF] via-[#F8FAFC] to-[#FFF7ED] px-4 sm:px-6">
+  <div class="w-full max-w-2xl mx-auto text-center">
+
+    <%# Headline %>
+    <div class="mb-2">
+      <span class="inline-flex items-center gap-1.5 bg-[#3B82F6]/10 text-[#3B82F6] text-xs font-600 px-3 py-1 rounded-full" style="font-weight: 600;">
+        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+        </svg>
+        Tuyến Hà Nội ↔ Hoà Lạc
+      </span>
+    </div>
+
+    <h1 class="text-3xl sm:text-4xl md:text-5xl font-800 text-[#1E293B] leading-tight mb-3" style="font-weight: 800;">
+      Đi chung xe,<br>
+      <span class="text-[#3B82F6]">tiết kiệm hơn</span>
+    </h1>
+    <p class="text-base sm:text-lg text-[#475569] mb-8 leading-relaxed">
+      Kết nối sinh viên & nhân viên Hoà Lạc với tài xế cùng tuyến đường.
+    </p>
+
+    <%# ===== SEARCH BOX ===== %>
+    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+
+      <%# Tab switcher: Tìm xe / Tìm khách %>
+      <div class="flex border-b border-gray-100">
+        <button
+          id="tab-find-ride"
+          onclick="switchTab('find-ride')"
+          class="flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-600 text-[#3B82F6] border-b-2 border-[#3B82F6] bg-[#EFF6FF] transition-all duration-200 cursor-pointer"
+          style="font-weight: 600;"
+          aria-selected="true"
+          role="tab"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          Tôi cần đi nhờ
+        </button>
+        <button
+          id="tab-find-passenger"
+          onclick="switchTab('find-passenger')"
+          class="flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-500 text-[#94A3B8] border-b-2 border-transparent hover:bg-gray-50 transition-all duration-200 cursor-pointer"
+          style="font-weight: 500;"
+          aria-selected="false"
+          role="tab"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+          </svg>
+          Tôi có xe, tìm khách
+        </button>
+      </div>
+
+      <%# Search fields %>
+      <div class="p-4 sm:p-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+
+          <%# Route direction %>
+          <div class="col-span-1 sm:col-span-2">
+            <label class="block text-xs font-600 text-[#64748B] mb-1.5 text-left" style="font-weight: 600;">Tuyến đường</label>
+            <div class="relative">
+              <select class="w-full appearance-none bg-[#F8FAFC] border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#1E293B] font-500 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent cursor-pointer transition-all duration-200" style="font-weight: 500;">
+                <option value="hn-hl">Hà Nội → Hoà Lạc</option>
+                <option value="hl-hn">Hoà Lạc → Hà Nội</option>
+              </select>
+              <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#94A3B8]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <%# Vehicle type — shown for "find-ride" tab %>
+          <div id="vehicle-filter">
+            <label class="block text-xs font-600 text-[#64748B] mb-1.5 text-left" style="font-weight: 600;">Loại xe</label>
+            <div class="flex gap-2">
+              <button
+                onclick="selectVehicle(this, 'any')"
+                class="flex-1 flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border-2 border-[#3B82F6] bg-[#EFF6FF] text-[#3B82F6] text-xs font-600 cursor-pointer transition-all duration-200 vehicle-btn selected"
+                style="font-weight: 600;"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Tất cả
+              </button>
+              <button
+                onclick="selectVehicle(this, 'motorbike')"
+                class="flex-1 flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border-2 border-gray-200 bg-white text-[#64748B] text-xs font-500 hover:border-[#3B82F6] hover:bg-[#EFF6FF] hover:text-[#3B82F6] cursor-pointer transition-all duration-200 vehicle-btn"
+                style="font-weight: 500;"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                </svg>
+                Xe máy
+              </button>
+              <button
+                onclick="selectVehicle(this, 'car')"
+                class="flex-1 flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border-2 border-gray-200 bg-white text-[#64748B] text-xs font-500 hover:border-[#3B82F6] hover:bg-[#EFF6FF] hover:text-[#3B82F6] cursor-pointer transition-all duration-200 vehicle-btn"
+                style="font-weight: 500;"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 17a2 2 0 100-4 2 2 0 000 4zM16 17a2 2 0 100-4 2 2 0 000 4zM3 11l1.5-5h15L21 11M3 11h18M3 11l-1 3h20l-1-3"/>
+                </svg>
+                Ô tô
+              </button>
+            </div>
+          </div>
+
+          <%# Date picker %>
+          <div>
+            <label for="depart-date" class="block text-xs font-600 text-[#64748B] mb-1.5 text-left" style="font-weight: 600;">Ngày đi</label>
+            <div class="relative">
+              <input
+                type="date"
+                id="depart-date"
+                value="<%= Date.today.strftime('%Y-%m-%d') %>"
+                min="<%= Date.today.strftime('%Y-%m-%d') %>"
+                class="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#1E293B] font-500 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent cursor-pointer transition-all duration-200"
+                style="font-weight: 500;"
+              >
+              <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#94A3B8]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <%# Search CTA button %>
+        <a
+          href="/posts"
+          id="search-btn"
+          class="block w-full text-center bg-[#F97316] hover:bg-orange-500 active:bg-orange-600 text-white font-700 text-base py-3.5 rounded-xl transition-colors duration-200 cursor-pointer"
+          style="font-weight: 700;"
+        >
+          <span id="search-btn-text">Tìm chuyến xe</span>
+          <svg class="w-5 h-5 inline ml-1.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </a>
+
+        <%# Post your own ride link %>
+        <p class="mt-3 text-xs text-[#94A3B8] text-center">
+          Muốn đăng chuyến của bạn?
+          <a href="/posts/new" class="text-[#3B82F6] hover:underline font-500 cursor-pointer" style="font-weight: 500;">Đăng ngay miễn phí</a>
+        </p>
+      </div>
+    </div>
+
+    <%# Social proof mini badges %>
+    <div class="flex flex-wrap items-center justify-center gap-4 mt-6">
+      <div class="flex items-center gap-1.5 text-sm text-[#475569]">
+        <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        Miễn phí 100%
+      </div>
+      <div class="flex items-center gap-1.5 text-sm text-[#475569]">
+        <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        Không cần thanh toán qua app
+      </div>
+      <div class="flex items-center gap-1.5 text-sm text-[#475569]">
+        <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        Xem SĐT & Zalo ngay
+      </div>
+    </div>
+
+  </div>
+
+  <%# Scroll hint %>
+  <div class="absolute bottom-6 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1 text-[#94A3B8] animate-bounce">
+    <span class="text-xs">Tìm hiểu thêm</span>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </div>
+</section>
+
+<%# ===== HOW IT WORKS ===== %>
+<section class="py-16 sm:py-20 px-4 sm:px-6 bg-white">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-12">
+      <h2 class="text-2xl sm:text-3xl font-800 text-[#1E293B] mb-3" style="font-weight: 800;">Cách hoạt động</h2>
+      <p class="text-[#475569] text-base max-w-md mx-auto">Chỉ 3 bước đơn giản để tìm chuyến phù hợp</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      <% [
+        { step: "01", icon: :search, title: "Tìm chuyến", desc: "Chọn tuyến đường, ngày đi và loại xe bạn muốn. Xem danh sách các chuyến phù hợp." },
+        { step: "02", icon: :contact, title: "Liên hệ ngay", desc: "Click \"Liên hệ\" để xem số điện thoại và Zalo của tài xế/khách. Nhắn tin trao đổi trong app." },
+        { step: "03", icon: :go, title: "Lên đường thôi!", desc: "Thoả thuận giá, hẹn giờ và tự thanh toán trực tiếp. Đơn giản, không phí ẩn." }
+      ].each_with_index do |item, i| %>
+        <div class="flex flex-col items-center text-center">
+          <div class="relative mb-4">
+            <div class="w-16 h-16 bg-[#EFF6FF] rounded-2xl flex items-center justify-center">
+              <% if item[:icon] == :search %>
+                <svg class="w-8 h-8 text-[#3B82F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+              <% elsif item[:icon] == :contact %>
+                <svg class="w-8 h-8 text-[#3B82F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+              <% else %>
+                <svg class="w-8 h-8 text-[#3B82F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+              <% end %>
+            </div>
+            <span class="absolute -top-2 -right-2 w-6 h-6 bg-[#3B82F6] text-white text-xs font-700 rounded-full flex items-center justify-center" style="font-weight: 700;"><%= i + 1 %></span>
+          </div>
+          <h3 class="text-base font-700 text-[#1E293B] mb-2" style="font-weight: 700;"><%= item[:title] %></h3>
+          <p class="text-sm text-[#475569] leading-relaxed"><%= item[:desc] %></p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</section>
+
+<%# ===== WHO IS IT FOR ===== %>
+<section class="py-16 sm:py-20 px-4 sm:px-6 bg-[#F8FAFC]">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-12">
+      <h2 class="text-2xl sm:text-3xl font-800 text-[#1E293B] mb-3" style="font-weight: 800;">Dành cho ai?</h2>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <%# Passengers card %>
+      <div class="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div class="w-12 h-12 bg-[#EFF6FF] rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-[#3B82F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+        </div>
+        <h3 class="text-lg font-700 text-[#1E293B] mb-2" style="font-weight: 700;">Sinh viên & nhân viên đi nhờ</h3>
+        <p class="text-sm text-[#475569] leading-relaxed mb-4">
+          Tiết kiệm chi phí di chuyển Hà Nội ↔ Hoà Lạc. Không cần xe riêng, chỉ cần tìm người đi cùng hướng.
+        </p>
+        <ul class="space-y-2">
+          <% ["Tiết kiệm 50-70% so với xe ôm công nghệ", "Đi cùng người quen biết, an toàn hơn", "Linh hoạt giờ giấc theo lịch học/làm"].each do |benefit| %>
+            <li class="flex items-center gap-2 text-sm text-[#475569]">
+              <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              <%= benefit %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+
+      <%# Drivers card %>
+      <div class="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div class="w-12 h-12 bg-[#FFF7ED] rounded-xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-[#F97316]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 17a2 2 0 100-4 2 2 0 000 4zM16 17a2 2 0 100-4 2 2 0 000 4zM3 11l1.5-5h15L21 11M3 11h18M3 11l-1 3h20l-1-3"/>
+          </svg>
+        </div>
+        <h3 class="text-lg font-700 text-[#1E293B] mb-2" style="font-weight: 700;">Tài xế có chỗ trống</h3>
+        <p class="text-sm text-[#475569] leading-relaxed mb-4">
+          Bạn vẫn đi tuyến đó hàng ngày? Chia sẻ chỗ trống, chia sẻ chi phí xăng và phí cầu đường.
+        </p>
+        <ul class="space-y-2">
+          <% ["Chia sẻ chi phí xăng và phí cầu đường", "Không phải chạy Grab — đi chung vì tiện", "Đăng chuyến hàng ngày chỉ mất 30 giây"].each do |benefit| %>
+            <li class="flex items-center gap-2 text-sm text-[#475569]">
+              <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              <%= benefit %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%# ===== TRUST / SAFETY ===== %>
+<section class="py-16 sm:py-20 px-4 sm:px-6 bg-white">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-12">
+      <h2 class="text-2xl sm:text-3xl font-800 text-[#1E293B] mb-3" style="font-weight: 800;">An toàn & tin cậy</h2>
+      <p class="text-[#475569] text-base max-w-md mx-auto">Cộng đồng dựa trên uy tín và đánh giá thực</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <% [
+        { icon: :star, title: "Đánh giá thực", desc: "Hệ thống đánh giá sau mỗi chuyến. Điểm trung bình hiển thị trên profile." },
+        { icon: :phone, title: "Xác thực SĐT", desc: "Mỗi tài khoản gắn với số điện thoại thực. Không ẩn danh, không lừa đảo." },
+        { icon: :community, title: "Cộng đồng Hoà Lạc", desc: "Tập trung vào sinh viên FPT, ĐHQG và nhân viên khu CNC — cùng môi trường làm việc." }
+      ].each do |item| %>
+        <div class="flex flex-col items-center text-center p-6 rounded-2xl bg-[#F8FAFC] border border-gray-100">
+          <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm">
+            <% if item[:icon] == :star %>
+              <svg class="w-6 h-6 text-[#F97316]" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+            <% elsif item[:icon] == :phone %>
+              <svg class="w-6 h-6 text-[#3B82F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+              </svg>
+            <% else %>
+              <svg class="w-6 h-6 text-[#3B82F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+              </svg>
+            <% end %>
+          </div>
+          <h3 class="text-sm font-700 text-[#1E293B] mb-1.5" style="font-weight: 700;"><%= item[:title] %></h3>
+          <p class="text-xs text-[#64748B] leading-relaxed"><%= item[:desc] %></p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</section>
+
+<%# ===== BOTTOM CTA ===== %>
+<section class="py-16 sm:py-20 px-4 sm:px-6 bg-gradient-to-br from-[#3B82F6] to-[#2563EB]">
+  <div class="max-w-2xl mx-auto text-center">
+    <h2 class="text-2xl sm:text-3xl font-800 text-white mb-3" style="font-weight: 800;">
+      Sẵn sàng lên đường?
+    </h2>
+    <p class="text-blue-100 text-base mb-8">
+      Tham gia cộng đồng RoadMate — hoàn toàn miễn phí.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <a
+        href="/register"
+        class="inline-flex items-center justify-center gap-2 bg-[#F97316] hover:bg-orange-500 text-white font-700 text-base px-8 py-3.5 rounded-xl transition-colors duration-200 cursor-pointer"
+        style="font-weight: 700;"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+        </svg>
+        Đăng ký ngay
+      </a>
+      <a
+        href="/posts"
+        class="inline-flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white font-600 text-base px-8 py-3.5 rounded-xl transition-colors duration-200 cursor-pointer border border-white/30"
+        style="font-weight: 600;"
+      >
+        Xem chuyến xe hôm nay
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<%# ===== FOOTER ===== %>
+<footer class="bg-[#1E293B] text-[#94A3B8] py-8 px-4 sm:px-6">
+  <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-2">
+      <div class="w-6 h-6 bg-[#3B82F6] rounded-md flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <span class="text-white font-600 text-sm" style="font-weight: 600;">RoadMate</span>
+    </div>
+    <p class="text-xs text-center">Bạn đồng hành trên đường — Hà Nội ↔ Hoà Lạc</p>
+    <p class="text-xs">© <%= Date.today.year %> RoadMate</p>
+  </div>
+</footer>
+
+<%# ===== TAB SWITCH SCRIPT ===== %>
+<script>
+  function switchTab(tab) {
+    const findRideTab = document.getElementById('tab-find-ride');
+    const findPassengerTab = document.getElementById('tab-find-passenger');
+    const vehicleFilter = document.getElementById('vehicle-filter');
+    const searchBtnText = document.getElementById('search-btn-text');
+
+    const activeClasses = ['text-[#3B82F6]', 'border-[#3B82F6]', 'bg-[#EFF6FF]', 'font-600'];
+    const inactiveClasses = ['text-[#94A3B8]', 'border-transparent', 'font-500'];
+
+    if (tab === 'find-ride') {
+      findRideTab.classList.add(...activeClasses);
+      findRideTab.classList.remove(...inactiveClasses);
+      findPassengerTab.classList.remove(...activeClasses);
+      findPassengerTab.classList.add(...inactiveClasses);
+      vehicleFilter.style.display = '';
+      searchBtnText.textContent = 'Tìm chuyến xe';
+    } else {
+      findPassengerTab.classList.add(...activeClasses);
+      findPassengerTab.classList.remove(...inactiveClasses);
+      findRideTab.classList.remove(...activeClasses);
+      findRideTab.classList.add(...inactiveClasses);
+      vehicleFilter.style.display = 'none';
+      searchBtnText.textContent = 'Tìm khách đi cùng';
+    }
+  }
+
+  function selectVehicle(btn, type) {
+    document.querySelectorAll('.vehicle-btn').forEach(function(b) {
+      b.classList.remove('border-[#3B82F6]', 'bg-[#EFF6FF]', 'text-[#3B82F6]', 'font-600');
+      b.classList.add('border-gray-200', 'bg-white', 'text-[#64748B]', 'font-500');
+    });
+    btn.classList.remove('border-gray-200', 'bg-white', 'text-[#64748B]', 'font-500');
+    btn.classList.add('border-[#3B82F6]', 'bg-[#EFF6FF]', 'text-[#3B82F6]', 'font-600');
+  }
+</script>
