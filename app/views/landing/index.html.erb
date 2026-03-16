@@ -14,12 +14,19 @@
     </a>
 
     <div class="hidden sm:flex items-center gap-3">
-      <a href="/login" class="text-sm text-[#4B5563] hover:text-[#16A34A] transition-colors duration-200 cursor-pointer px-3 py-2" style="font-weight: 500;">
-        Đăng nhập
-      </a>
-      <a href="/register" class="text-sm bg-[#16A34A] hover:bg-[#15803D] text-white px-4 py-2 rounded-lg transition-colors duration-200 cursor-pointer" style="font-weight: 600;">
-        Đăng ký miễn phí
-      </a>
+      <% if user_signed_in? %>
+        <span class="text-sm text-[#4B5563] px-3 py-2" style="font-weight: 500;"><%= current_user.name %></span>
+        <%= button_to "Đăng xuất", destroy_user_session_path, method: :delete,
+              class: "text-sm text-[#4B5563] hover:text-red-600 transition-colors duration-200 cursor-pointer px-3 py-2 bg-transparent border-0",
+              style: "font-weight: 500;" %>
+      <% else %>
+        <%= link_to "Đăng nhập", new_user_session_path,
+              class: "text-sm text-[#4B5563] hover:text-[#16A34A] transition-colors duration-200 cursor-pointer px-3 py-2",
+              style: "font-weight: 500;" %>
+        <%= link_to "Đăng ký miễn phí", new_user_registration_path,
+              class: "text-sm bg-[#16A34A] hover:bg-[#15803D] text-white px-4 py-2 rounded-lg transition-colors duration-200 cursor-pointer",
+              style: "font-weight: 600;" %>
+      <% end %>
     </div>
 
     <button class="sm:hidden p-2 rounded-lg text-[#4B5563] hover:bg-green-50 cursor-pointer" aria-label="Menu">
@@ -515,16 +522,25 @@
       Tham gia RoadMate — đi chung xe, tiết kiệm tiền, giảm CO₂.
     </p>
     <div class="flex flex-col sm:flex-row gap-3 justify-center">
-      <a
-        href="/register"
-        class="inline-flex items-center justify-center gap-2 bg-[#22C55E] hover:bg-[#16A34A] text-white text-base px-8 py-3.5 rounded-xl transition-colors duration-200 cursor-pointer"
-        style="font-weight: 700;"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-        </svg>
-        Đăng ký ngay
-      </a>
+      <% if user_signed_in? %>
+        <%= link_to root_path,
+              class: "inline-flex items-center justify-center gap-2 bg-[#22C55E] hover:bg-[#16A34A] text-white text-base px-8 py-3.5 rounded-xl transition-colors duration-200 cursor-pointer",
+              style: "font-weight: 700;" do %>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          Vào trang chính
+        <% end %>
+      <% else %>
+        <%= link_to new_user_registration_path,
+              class: "inline-flex items-center justify-center gap-2 bg-[#22C55E] hover:bg-[#16A34A] text-white text-base px-8 py-3.5 rounded-xl transition-colors duration-200 cursor-pointer",
+              style: "font-weight: 700;" do %>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+          </svg>
+          Đăng ký ngay
+        <% end %>
+      <% end %>
       <a
         href="/posts"
         class="inline-flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white text-base px-8 py-3.5 rounded-xl transition-colors duration-200 cursor-pointer border border-white/30"

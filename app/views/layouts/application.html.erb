@@ -25,6 +25,19 @@
   </head>
 
   <body class="bg-[#F8FAFC] text-[#1E293B]" style="font-family: 'Be Vietnam Pro', sans-serif;">
+    <%# Flash messages %>
+    <% if notice.present? %>
+      <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg text-sm max-w-sm text-center">
+        <%= notice %>
+      </div>
+    <% end %>
+
+    <% if alert.present? %>
+      <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg text-sm max-w-sm text-center">
+        <%= alert %>
+      </div>
+    <% end %>
+
     <%= yield %>
   </body>
 </html>

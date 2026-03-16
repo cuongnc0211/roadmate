@@ -19,10 +19,10 @@
 **Status**: Not started
 
 **Key Features**:
-- [ ] User model + phone/password auth (`has_secure_password`)
-- [ ] Session management (60-day cookie)
-- [ ] Signup → form validation → create User
-- [ ] Login → authenticate → redirect to feed
+- [ ] User model + phone/password auth (Devise)
+- [ ] Session management (60-day cookie, Devise rememberable)
+- [ ] Signup → form validation → create User (Devise registrations)
+- [ ] Login → authenticate → redirect to feed (Devise sessions)
 - [ ] Profile view (show user info + rating)
 - [ ] Profile edit (name, avatar, vehicle, Zalo link)
 - [ ] Logout
@@ -30,8 +30,9 @@
 - [ ] OTP code generation, validation, cleanup
 
 **Database**:
-- Create `users` table (phone, password_digest, name, avatar_url, zalo_link, vehicle_type, available_seats, avg_rating, rating_count)
+- Create `users` table (phone, encrypted_password, name, avatar_url, zalo_link, vehicle_type, available_seats, avg_rating, rating_count, devise columns)
 - Create `otp_codes` table (phone, code, expires_at, used)
+- Devise provides: encrypted_password, remember_created_at, and other auth columns
 
 **Views**:
 - `users/new` (signup form)
@@ -42,9 +43,10 @@
 - `password_reset/confirm` (OTP entry)
 
 **Controllers**:
-- `UsersController` (new, create, show, edit, update)
-- `SessionsController` (new, create, destroy)
-- `PasswordResetController` (new, create)
+- `Users::RegistrationsController` (overrides Devise, handles phone normalization)
+- `Users::SessionsController` (overrides Devise, handles phone authentication)
+- `ProfilesController` (show, edit, update — separate from Devise)
+- `PasswordResetController` (new, create — SMS OTP fallback)
 - `OtpCodesController` (create, verify)
 
 **Testing**:
@@ -469,6 +471,18 @@ Week 9+:   [Phase 6] Monitoring & Launch
 ### Decision 5: Kamal Deployment
 **Chosen**: Kamal (Docker)
 **Rationale**: Single-server simplicity, zero-downtime deploys, cost-effective
+
+### Decision 6: Devise vs. has_secure_password
+**Chosen**: Devise 4.9+ (complete authentication framework)
+**Rationale**:
+- Replaces manual has_secure_password implementation
+- Phone-based authentication (non-standard, requires custom configuration)
+- authentication_keys = [:phone] instead of email
+- Provides registerable + rememberable modules for session persistence
+- Uses encrypted_password column instead of password_digest
+- Future-proof for devise-api or mobile token-based authentication
+- Reduces custom auth code; leverages gem conventions
+- Controllers: Users::RegistrationsController, Users::SessionsController override defaults
 
 ---
 

@@ -1,0 +1,12 @@
+<% if resource.errors.any? %>
+  <div class="bg-red-50 border border-red-200 rounded-lg p-4" data-turbo-cache="false">
+    <p class="text-sm font-medium text-red-800 mb-1">
+      <%= resource.errors.count %> lỗi cần sửa:
+    </p>
+    <ul class="list-disc list-inside space-y-1">
+      <% resource.errors.full_messages.each do |message| %>
+        <li class="text-sm text-red-700"><%= message %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

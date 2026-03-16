@@ -34,7 +34,6 @@
 │  │                                                        │  │
 │  │  ┌──────────────────────────────────────────────────┐ │  │
 │  │  │         Services (Business Logic)                │ │  │
-│  │  │  - UserAuthenticator                             │ │  │
 │  │  │  - ConversationInitiator                         │ │  │
 │  │  │  - RatingCalculator                              │ │  │
 │  │  └──────────────────────────────────────────────────┘ │  │
@@ -98,6 +97,7 @@
 - `rails` (8.1.1): Full-stack framework
 - `pg`: PostgreSQL driver
 - `puma`: Web server
+- `devise` (4.9+): Complete authentication solution with phone-based login
 - `turbo-rails`: Real-time UI via Hotwire Frames
 - `stimulus-rails`: Lightweight JS framework
 - `tailwindcss-rails`: Atomic CSS (no custom CSS needed)
@@ -233,41 +233,41 @@ Developer (bin/kamal deploy)
 
 ```
 ┌─────────────────────────────────────────┐
-│  User Registration                      │
+│  User Registration (via Devise)         │
 └──────────────────┬──────────────────────┘
                    │
-         POST /users/new
+         POST /users (Devise route)
                    │
-        ┌──────────▼───────────┐
-        │ UsersController#new  │
-        │ - Render form        │
-        └──────────────────────┘
+        ┌──────────▼──────────────────┐
+        │ Users::RegistrationsController│
+        │ (overrides Devise default)   │
+        │ - Validate phone + password  │
+        │ - Normalize phone            │
+        │ - Call Devise registration   │
+        │ - Redirect to profile edit   │
+        └──────────────────────────────┘
                    │
-         User fills: phone + password
+        ┌──────────▼──────────────────┐
+        │ User Model                   │
+        │ - Devise modules:            │
+        │   :database_authenticatable, │
+        │   :registerable,             │
+        │   :rememberable              │
+        │ - authentication_keys[:phone]│
+        │ - encrypted_password (Devise)│
+        └──────────────────────────────┘
                    │
-        ┌──────────▼─────────────────┐
-        │ UsersController#create     │
-        │ - Validate params          │
-        │ - Normalize phone          │
-        │ - Create User record       │
-        │ - Set session[:user_id]    │
-        │ - Redirect to profile      │
-        └──────────────────────────┘
-                   │
-        ┌──────────▼──────────┐
-        │ User Model          │
-        │ - has_secure_password
-        │ - bcrypt hashing    │
-        └──────────────────────┘
-                   │
-        ┌──────────▼──────────────┐
-        │ PostgreSQL (Primary DB) │
-        │ INSERT into users       │
-        └─────────────────────────┘
+        ┌──────────▼──────────────────────┐
+        │ PostgreSQL (Primary DB)         │
+        │ INSERT into users               │
+        │ - phone (normalized)            │
+        │ - encrypted_password (Bcrypt)   │
+        └─────────────────────────────────┘
                    │
         Session stored in:
         - Solid Cache DB (or Redis)
         - OR browser cookie (encrypted)
+        - Devise provides session mgmt
 ```
 
 ### 2. Creating a Post (Offer/Request)
@@ -543,21 +543,23 @@ Per-Request:
   └────────────────────────────────┘
 ```
 
-### Password Security
+### Password Security (Devise)
 ```
 User Input: "MyP@ssw0rd"
     ↓
-has_secure_password (BCrypt)
+Devise (BCrypt hashing)
     ↓
 Hashed: "$2b$12$abcd...efgh" (60 chars)
     ↓
-Stored in users.password_digest (VARCHAR)
+Stored in users.encrypted_password (VARCHAR)
     ↓
-On Login:
+On Login (via Devise):
     ↓
-BCrypt::Password.new(stored_hash) == input
+Devise authenticates using encrypted_password
     ↓
 Time-constant comparison (resistant to timing attacks)
+    ↓
+Session set (via Devise remember_me if checked)
 ```
 
 ### OTP (Password Reset)
