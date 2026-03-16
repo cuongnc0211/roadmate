@@ -8,11 +8,13 @@
 
 **Tên sản phẩm:** RoadMate
 **Tagline:** Bạn đồng hành trên đường
-**Loại:** Carpooling marketplace — kết nối người có xe (ô tô + xe máy) với người có nhu cầu di chuyển
-**Tuyến trọng tâm:** Trung tâm Hà Nội ↔ Khu Công nghệ cao Hoà Lạc (~40km)
-**Target user:** Sinh viên FPT University, ĐHQG Hà Nội (năm nhất tại Hoà Lạc), nhân viên khu CNC Hoà Lạc
+**Loại:** Carpooling marketplace — kết nối người có xe (ô tô + xe máy) với người có nhu cầu di chuyển trên toàn quốc
+**Tầm nhìn:** Giảm xe cá nhân trên đường, tiết kiệm chi phí cho người dùng, và góp phần giảm khí thải CO₂ — đi chung xe là hành động nhỏ nhưng có tác động lớn đến môi trường và xã hội
+**Target user:** Bất kỳ ai có nhu cầu đi chung xe tại Việt Nam — sinh viên, nhân viên văn phòng, người đi công tác, du lịch nội địa
 **Giai đoạn:** MVP — đang validate hypothesis "hai phía (driver + passenger) có match được nhau không"
 **Solo founder:** 1 người, nguồn lực hạn chế, ưu tiên velocity
+
+> **Internal note (không hiển thị với user):** Tuyến đầu tiên để seed data và test PMF là Hà Nội ↔ Hoà Lạc (~40km), target ban đầu là sinh viên FPT/ĐHQG tại Hoà Lạc và nhân viên khu CNC Hoà Lạc. Đây là tuyến có mật độ cao, nhu cầu đều đặn, dễ validate. Sản phẩm không bị giới hạn tuyến này — mở rộng toàn quốc khi có traction.
 
 ---
 
@@ -260,6 +262,19 @@ SECRET_KEY_BASE=
 - Không mobile app (Expo) — PWA trước
 - Không tính năng "nhóm đi chung taxi" — phase 2
 - Không email — chỉ SĐT
+
+---
+
+## Giá trị cốt lõi & môi trường
+
+RoadMate không chỉ là công cụ tiết kiệm tiền — đây là nền tảng góp phần giải quyết vấn đề giao thông và môi trường tại Việt Nam:
+
+- **Tiết kiệm chi phí:** Chia sẻ chi phí xăng, cầu đường giữa các thành viên — giảm đáng kể chi phí di chuyển hàng ngày
+- **Tiết kiệm năng lượng:** Mỗi chuyến đi chung = ít xe cá nhân hơn trên đường = tiêu thụ nhiên liệu ít hơn
+- **Giảm khí thải:** Carpooling giảm trực tiếp lượng CO₂ và khí thải độc hại — đóng góp vào mục tiêu net-zero của Việt Nam
+- **Giảm tắc đường:** Ít phương tiện = ít ùn tắc = chất lượng sống đô thị tốt hơn
+
+**Trong UI:** Nên nhắc nhẹ giá trị môi trường ở các điểm phù hợp (onboarding, feed, sau khi hoàn thành chuyến) — không push quá mức nhưng tạo cảm giác user đang làm điều có ý nghĩa.
 
 ---
 
