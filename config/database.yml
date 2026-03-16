@@ -84,6 +84,30 @@ test:
 # Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
 # for a full overview on how database connection configuration can be specified.
 #
+staging:
+  primary:
+    <<: *default
+    url: <%= ENV["DATABASE_URL"] %>
+    database: roadmate_production
+
+  cache:
+    <<: *default
+    url: <%= ENV["CACHE_DATABASE_URL"] || ENV["DATABASE_URL"] %>
+    database: roadmate_production
+    migrations_paths: db/cache_migrate
+
+  queue:
+    <<: *default
+    url: <%= ENV["QUEUE_DATABASE_URL"] || ENV["DATABASE_URL"] %>
+    database: roadmate_production
+    migrations_paths: db/queue_migrate
+
+  cable:
+    <<: *default
+    url: <%= ENV["CABLE_DATABASE_URL"] || ENV["DATABASE_URL"] %>
+    database: roadmate_production
+    migrations_paths: db/cable_migrate
+
 production:
   primary:
     <<: *default
