@@ -35,8 +35,8 @@ Visit `http://localhost:3000`
 # Terminal 1: Web server
 rails server
 
-# Terminal 2: Job processor
-bundle exec solid_queue:work
+# Terminal 2: Job processor (Sidekiq)
+bundle exec sidekiq
 
 # Terminal 3: Tailwind CSS watcher
 ./bin/rails tailwindcss:watch
@@ -53,6 +53,9 @@ Create `.env.local` in project root:
 DATABASE_URL=postgres://postgres:password@localhost/roadmate_development
 
 # Redis (optional, uses memory store if not set)
+REDIS_URL=redis://localhost:6379/0
+
+# Redis (for session store, cache, Sidekiq)
 REDIS_URL=redis://localhost:6379/0
 
 # SMS Provider (for password reset via OTP)
@@ -151,7 +154,7 @@ env:
   secret:
     - RAILS_MASTER_KEY               # From config/master.key
   clear:
-    SOLID_QUEUE_IN_PUMA: true        # Run jobs in Puma process
+    REDIS_URL: redis://redis:6379/0  # Redis for Sidekiq, cache, session
 
 volumes:
   - "roadmate_storage:/rails/storage" # Persist uploads + DB backups
@@ -263,33 +266,19 @@ bin/kamal rollback
 
 **File**: `config/database.yml`
 
-Production config (auto-managed by Kamal):
+Production config (single database):
 
 ```yaml
 production:
-  primary: &primary_production
-    adapter: postgresql
-    database: roadmate_production
-    username: roadmate
-    password: <%= ENV["ROADMATE_DATABASE_PASSWORD"] %>
-    host: db.example.com              # External DB server
-    port: 5432
-
-  # Separate DBs for cache, queue, cable (same credentials)
-  cache:
-    <<: *primary_production
-    database: roadmate_production_cache
-    migrations_paths: db/cache_migrate
-
-  queue:
-    <<: *primary_production
-    database: roadmate_production_queue
-    migrations_paths: db/queue_migrate
-
-  cable:
-    <<: *primary_production
-    database: roadmate_production_cable
-    migrations_paths: db/cable_migrate
+  adapter: postgresql
+  database: roadmate_production
+  username: roadmate
+  password: <%= ENV["DB_PASSWORD"] %>
+  host: db.example.com              # External DB server
+  port: 5432
+  max_connections: 25
+  checkout_timeout: 2.0
+  reaping_frequency: 10
 ```
 
 ### Migrations
@@ -512,12 +501,12 @@ workers ENV.fetch("WEB_CONCURRENCY") { 2 }  # Multiple processes
 ActiveRecord::Base.connection_pool_size = max_threads_count
 ```
 
-**Tuning for 192.168.0.1 (1 server)**:
+**Tuning for single server deployment:**
 ```bash
 # Set in .kamal/secrets or config/deploy.yml
 WEB_CONCURRENCY=2           # 2 Puma processes
 RAILS_MAX_THREADS=25        # 25 threads per process
-SOLID_QUEUE_CONCURRENCY=4   # 4 job threads
+SIDEKIQ_CONCURRENCY=5       # 5 worker threads (separate container)
 ```
 
 ### Database Connection Pooling
@@ -534,10 +523,10 @@ production:
 
 ```ruby
 # config/environments/production.rb
-config.cache_store = :solid_cache_store, { database: :cache }
-
-# Or with Redis
 config.cache_store = :redis_cache_store, { url: ENV["REDIS_URL"] }
+
+# config/environments/development.rb (optional, default: memory_store)
+config.cache_store = :memory_store
 ```
 
 ---
@@ -613,16 +602,17 @@ psql -h db.example.com -U roadmate -d roadmate_production
 ### Jobs Not Running
 
 ```bash
-# Check Solid Queue status
-bin/kamal app exec "bin/rails solid_queue:status"
+# Check Sidekiq status
+bin/kamal app exec "bundle exec sidekiq -v"
 
-# View job queue
-bin/kamal app exec "bin/rails console" << EOF
-SolidQueue::Job.limit(10).each { |j| puts j }
+# View job queue (Redis)
+bin/kamal app exec "redis-cli" << EOF
+KEYS "*"
+LRANGE "queue:default" 0 10
 EOF
 
-# Retry failed jobs
-bin/kamal app exec "bin/rails solid_queue:clear"
+# Flush all jobs (use carefully)
+bin/kamal app exec "redis-cli FLUSHDB"
 ```
 
 ### Out of Disk Space

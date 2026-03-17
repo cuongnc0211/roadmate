@@ -185,14 +185,14 @@ How to set up development, build for production, and deploy.
 
 | Table | Columns | Purpose |
 |-------|---------|---------|
-| `users` | 8 | User accounts, profiles, ratings |
-| `posts` | 13 | Ride offers/requests with details |
-| `conversations` | 4 | Chat threads between users |
-| `messages` | 4 | Messages within conversations |
-| `ratings` | 5 | User ratings/reviews |
+| `users` | 10 | User accounts, profiles, ratings |
+| `rides` | 15 | Ride offers/requests with details |
+| `ride_requests` | 7 | Booking/offer with status and messages |
+| `ride_request_messages` | 5 | Messages within RideRequest thread |
+| `ratings` | 6 | User ratings/reviews per RideRequest |
 | `otp_codes` | 4 | Password reset OTP codes |
 
-**Total**: 40+ columns, 10+ indexes, security constraints
+**Total**: 47+ columns, 12+ indexes, security constraints
 
 ---
 
@@ -200,14 +200,15 @@ How to set up development, build for production, and deploy.
 
 ```
 Frontend:  ERB + Hotwire (Turbo + Stimulus) + Tailwind CSS
-Backend:   Rails 8.1.1 (full-stack, not API)
-Database:  PostgreSQL (4 separate DBs in prod)
-Jobs:      Solid Queue (in-Puma for MVP)
-Cache:     Solid Cache / Redis
-Deploy:    Kamal (Docker)
-Auth:      bcrypt (has_secure_password)
-SMS:       ESMS (Vietnam-local)
-Storage:   Active Storage (S3/R2 production)
+Backend:   Rails 8 (full-stack, not API)
+Database:  PostgreSQL (single DB)
+Jobs:      Sidekiq + Redis
+Cache:     Redis
+Session:   Redis (60 days)
+Deploy:    Kamal (Docker) or Render/Railway (PaaS)
+Auth:      has_secure_password (bcrypt, no Devise)
+SMS:       ESMS (Vietnam-local provider)
+Storage:   Active Storage (local dev, S3/R2 prod)
 ```
 
 ---
@@ -215,9 +216,9 @@ Storage:   Active Storage (S3/R2 production)
 ### Authentication Flow
 
 1. User registers: phone + password → `has_secure_password` (bcrypt)
-2. User logs in: credentials authenticated → session cookie (60 days)
+2. User logs in: phone + password authenticated → session[:user_id] (60 days)
 3. Forgot password: SMS OTP (ESMS) → verify OTP → reset password
-4. Session persisted in Solid Cache DB or encrypted cookie
+4. Session persisted in Redis or encrypted cookie (60 days)
 
 ---
 
@@ -225,12 +226,12 @@ Storage:   Active Storage (S3/R2 production)
 
 1. **Auth**: Phone + password login, session, password reset (OTP)
 2. **Profile**: Edit name, avatar, vehicle type, Zalo link, view ratings
-3. **Posts**: Create offer/request, filter by route/time, auto-expire (24h), recurring (daily)
-4. **Contact**: "Liên hệ" button → create conversation, reveal phone + Zalo
-5. **Chat**: Message in-app (polling every 10s, Turbo Frames)
-6. **Rating**: 1-5 score + comment, unique per conversation, avg rating shown (min 3 reviews)
+3. **Rides**: Create offer/request, filter by route, auto-expire (1h), recurring (daily)
+4. **RideRequests**: Book/Offer button → create RideRequest, reveal phone + Zalo, 2 flows (A & B)
+5. **Chat**: Message in RideRequest thread (polling every 10s, Turbo Frames)
+6. **Rating**: 1-5 score + comment, unique per RideRequest, avg rating shown (min 3 reviews)
 7. **PWA**: Web app manifest, service worker, install to home screen
-8. **Jobs**: Post expiry, recurring post creation, OTP cleanup (all hourly)
+8. **Jobs**: Sidekiq - ExpireRides (every 15min), RecurringRide, OtpCleanup (hourly)
 
 ---
 

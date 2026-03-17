@@ -20,16 +20,15 @@
 │  │                                  │  + Stimulus JS     │ │  │
 │  │  ┌──────────────────────────────────────────────────┐ │  │
 │  │  │           Models (ActiveRecord)                 │ │  │
-│  │  │  User, Post, Conversation, Message, Rating      │ │  │
-│  │  │  with validations, associations, enums          │ │  │
+│  │  │  User, Ride, RideRequest, RideRequestMessage,  │ │  │
+│  │  │  Rating with validations, associations, enums  │ │  │
 │  │  └──────────────────────────────────────────────────┘ │  │
 │  │                                                        │  │
 │  │  ┌──────────────────────────────────────────────────┐ │  │
-│  │  │   Background Jobs (Solid Queue, In-Puma)        │ │  │
-│  │  │  - PostExpiryJob (hourly)                        │ │  │
-│  │  │  - RecurringPostCreatorJob (hourly)              │ │  │
-│  │  │  - OtpCodeCleanupJob (hourly)                    │ │  │
-│  │  │  - SmsNotifierJob (on-demand)                    │ │  │
+│  │  │   Background Jobs (Sidekiq + Redis)             │ │  │
+│  │  │  - ExpireRidesJob (every 15 min)                 │ │  │
+│  │  │  - RecurringRideJob (after expire)               │ │  │
+│  │  │  - OtpCleanupJob (hourly)                        │ │  │
 │  │  └──────────────────────────────────────────────────┘ │  │
 │  │                                                        │  │
 │  │  ┌──────────────────────────────────────────────────┐ │  │
@@ -52,7 +51,7 @@
 │  │  └──────────────────────────────────────────────────┘ │  │
 │  │                                                        │  │
 │  │  ┌──────────────────────────────────────────────────┐ │  │
-│  │  │    Cache Layer (Solid Cache + Redis)             │ │  │
+│  │  │    Cache Layer (Redis)                           │ │  │
 │  │  │  - Session store (60-day cookie)                │ │  │
 │  │  │  - Query caching (ratings, user data)           │ │  │
 │  │  │  - Rate limiting buckets (OTP requests)         │ │  │
@@ -68,18 +67,8 @@
                 │                             │
         ┌───────▼──────────┐        ┌────────▼────────┐
         │   PostgreSQL     │        │   Redis         │
-        │   (Primary DB)   │        │   (Cache/Queue) │
-        └────────┬─────────┘        └────────┬────────┘
-                 │                          │
-        ┌────────▼──────────┐        ┌──────▼─────────┐
-        │ Solid Queue DB    │        │  Solid Cache   │
-        │ (Job persistence) │        │     DB         │
-        └────────┬──────────┘        └────────────────┘
-                 │
-        ┌────────▼──────────┐
-        │ Solid Cable DB    │
-        │  (future use)     │
-        └───────────────────┘
+        │   (Primary DB)   │        │  (Cache/Queue)  │
+        └──────────────────┘        └─────────────────┘
 ```
 
 ---
@@ -97,46 +86,31 @@
 - `rails` (8.1.1): Full-stack framework
 - `pg`: PostgreSQL driver
 - `puma`: Web server
-- `devise` (4.9+): Complete authentication solution with phone-based login
 - `turbo-rails`: Real-time UI via Hotwire Frames
 - `stimulus-rails`: Lightweight JS framework
 - `tailwindcss-rails`: Atomic CSS (no custom CSS needed)
 - `importmap-rails`: Zero-config JS modules (no bundler)
-- `solid_queue`: Background jobs (database-backed, no Redis needed)
-- `solid_cache`: Caching (database-backed or Redis)
-- `solid_cable`: Action Cable backend (future use, not MVP)
+- `sidekiq`: Background jobs with Redis
+- `redis`: Cache store, job queue backend
 
-### Database: PostgreSQL (Multiple Databases in Production)
+### Database: PostgreSQL (Single Database)
 
 **Development:**
 - Single database: `roadmate_development`
 - Simpler setup, faster iteration
 
-**Production (4 Separate Databases):**
+**Production:**
 ```
-1. Primary (roadmate_production)
-   - User data, posts, conversations, messages, ratings
-   - Main application data
-
-2. Cache (roadmate_production_cache)
-   - Session store, rate-limiting buckets, query cache
-   - Solid Cache tables (SolidCache::Entry)
-   - Can be flushed without losing app data
-
-3. Queue (roadmate_production_queue)
-   - Job storage (Solid Queue)
-   - Can be separately scaled/monitored
-
-4. Cable (roadmate_production_cable)
-   - Action Cable state (if WebSocket added later)
-   - Separate DB for isolation
+- Primary (roadmate_production)
+  - User data, rides, ride requests, ride request messages, ratings
+  - Main application data
+  - Session store (via Redis)
 ```
 
 **Rationale:**
-- **Resilience**: Cache DB issues don't affect app data
-- **Performance**: Separate connections prevent contention
-- **Maintenance**: Can backup/replicate only primary DB
-- **Scaling**: Queue DB can handle concurrent job writes separately
+- **Simplicity**: Single DB easier to manage at MVP scale
+- **Performance**: Redis handles sessions and cache separately
+- **Scaling**: Can add read replicas when needed
 
 ### Web Server: Puma + Thruster
 - **Puma**: Multi-process HTTP server (5 threads default, configurable)
@@ -157,20 +131,16 @@
 - **Benefits**: No build step during development, instant reload
 - **Tradeoff**: Slower for 100+ JavaScript files (OK for MVP)
 
-### Background Jobs: Solid Queue (In-Puma)
+### Background Jobs: Sidekiq + Redis
 **Development & MVP:**
 ```
-Job scheduler → Solid Queue (Database) → Puma Worker Thread
-                   ↑
-             db/queue_schema.rb
+Job scheduler → Sidekiq (Redis queue) → Worker thread
 ```
 
 **Production (Single Server):**
 ```
-# config/deploy.yml
-env:
-  clear:
-    SOLID_QUEUE_IN_PUMA: true  # Run jobs in Puma process
+# Run Sidekiq alongside Puma
+bundle exec sidekiq -e production
 ```
 
 **Future (Multi-Server):**
@@ -180,43 +150,41 @@ servers:
   job:
     hosts:
       - 192.168.0.2
-    cmd: bin/jobs  # Dedicated job processor
+    cmd: bundle exec sidekiq
 ```
 
-### Caching Strategy: Solid Cache + Redis (Optional)
-**MVP (In-Memory):**
+### Caching Strategy: Redis
+
+**Development:**
 ```ruby
 # config/environments/development.rb
 config.cache_store = :memory_store
 ```
 
-**Production (Database-Backed):**
+**Production:**
 ```ruby
 # config/environments/production.rb
-config.cache_store = :solid_cache_store  # Uses separate cache DB
-```
-
-**With Redis (Optional, for higher throughput):**
-```ruby
 config.cache_store = :redis_cache_store, { url: ENV["REDIS_URL"] }
 ```
 
-### Deployment: Kamal (Docker)
+### Deployment: Kamal (Docker) or Render.com/Railway
 **Why Kamal?**
 - Built by Basecamp, integrated with Rails
 - Single-server deployment (no Kubernetes complexity)
 - Automatic zero-downtime deploys
 - Built-in logging, monitoring hooks
 
+**Alternatives:**
+- Render.com (PaaS, simpler than Kamal)
+- Railway (PaaS, supports Redis + PostgreSQL)
+
 **Architecture:**
 ```
-Developer (bin/kamal deploy)
+Developer (bin/kamal deploy or git push)
             ↓
     Build Docker image (Dockerfile)
             ↓
-    Push to registry (localhost:5555 → production registry)
-            ↓
-    SSH into 192.168.0.1
+    SSH into server (Kamal) or PaaS (Render/Railway)
             ↓
     Pull image, start container, health check
             ↓
@@ -265,106 +233,128 @@ Developer (bin/kamal deploy)
         └─────────────────────────────────┘
                    │
         Session stored in:
-        - Solid Cache DB (or Redis)
-        - OR browser cookie (encrypted)
-        - Devise provides session mgmt
+        - Redis (session store)
+        - Browser cookie (encrypted, 60 days)
 ```
 
-### 2. Creating a Post (Offer/Request)
+### 2. Creating a Ride (Offer/Request)
 
 ```
 ┌─────────────────────────────────────┐
-│ Driver/Passenger: Create Post       │
+│ Driver/Passenger: Create Ride       │
 └─────────────────┬───────────────────┘
                   │
-        GET /posts/new?type=offer
+        GET /rides/new?type=offer
                   │
         ┌─────────▼────────────┐
-        │ PostsController#new  │
-        │ - Build @post        │
+        │ RidesController#new  │
+        │ - Build @ride        │
         │ - Render form        │
         └──────────────────────┘
                   │
-     User fills: route, time, price, seats
+     User fills: origin, destination, time, price, seats
                   │
         ┌─────────▼────────────────────┐
-        │ PostsController#create       │
-        │ - Validate post_params       │
+        │ RidesController#create       │
+        │ - Validate ride_params       │
         │ - Set user_id = current_user │
-        │ - Save Post                  │
+        │ - Save Ride                  │
         └──────────────────┬───────────┘
                            │
         ┌──────────────────▼──────────────┐
-        │ Post Model Validations         │
+        │ Ride Model Validations         │
         │ - Presence: user, route, time  │
-        │ - Format: phone, enums         │
+        │ - Format: enums                │
         │ - Comparison: time > now       │
         └──────────────────┬──────────────┘
                            │
         ┌──────────────────▼──────────────┐
         │ PostgreSQL (Primary DB)        │
-        │ INSERT into posts              │
+        │ INSERT into rides              │
         │ ├─ user_id                     │
         │ ├─ origin, destination         │
         │ ├─ depart_at                   │
-        │ ├─ post_type, vehicle_type     │
+        │ ├─ ride_type, vehicle_type     │
         │ ├─ status = active             │
         │ └─ created_at = now            │
         └──────────────────┬──────────────┘
                            │
-        Redirect to post#show
+        Redirect to ride#show
                            │
         ┌──────────────────▼──────────────┐
-        │ Solid Queue Job (hourly)       │
-        │ PostExpiryJob                  │
-        │ - Find posts created > 24h ago │
+        │ Sidekiq Job (every 15 min)     │
+        │ ExpireRidesJob                 │
+        │ - Find rides created > 1h ago  │
         │ - UPDATE status = expired      │
         └────────────────────────────────┘
 ```
 
-### 3. Contact & Conversation Flow
+### 3. Contact & RideRequest Flow
 
+Two flows: **Flow A** (Driver posts offer, Passenger books) and **Flow B** (Passenger posts request, Driver offers).
+
+**Flow A: Passenger creates RideRequest (booking)**
 ```
 ┌──────────────────────────────────────┐
-│ Passenger clicks "Liên hệ"           │
-│ on Driver's Post                     │
+│ Passenger clicks "Book"               │
+│ on Driver's Offer Ride               │
 └────────────────┬─────────────────────┘
                  │
-       POST /posts/:id/contact
+    POST /rides/:id/ride_requests
                  │
-        ┌────────▼─────────────┐
-        │ PostsController#     │
-        │ contact              │
-        │ - Check: not own post│
-        │ - Create Conversation
-        └────────┬─────────────┘
-                 │
-        ┌────────▼──────────────────┐
-        │ ConversationInitiator     │
-        │ Service Object            │
-        │ - Validate user != post.  │
-        │   user                    │
-        │ - find_or_create_by:      │
-        │   post_id, initiator_id   │
-        │ - UNIQUE constraint       │
+        ┌────────▼─────────────────┐
+        │ RideRequestsController#  │
+        │ create                    │
+        │ - Validate ride exists    │
+        │ - direction = :booking    │
+        │ - requester = passenger   │
         └────────┬──────────────────┘
                  │
         ┌────────▼──────────────────────┐
         │ PostgreSQL (Primary DB)      │
-        │ INSERT into conversations    │
-        │ ├─ post_id = driver's post   │
-        │ ├─ initiator_id = passenger  │
-        │ ├─ recipient_id = driver     │
-        │ └─ status = active           │
+        │ INSERT into ride_requests    │
+        │ ├─ ride_id                   │
+        │ ├─ requester_id = passenger  │
+        │ ├─ direction = booking       │
+        │ ├─ status = pending          │
+        │ └─ UNIQUE(ride_id, requester)│
         └────────┬──────────────────────┘
                  │
         ┌────────▼─────────────────┐
-        │ Redirect to conversation  │
-        │ show page                 │
-        │ - Display driver's phone  │
-        │ - Display driver's Zalo   │
-        │ - Open message form       │
+        │ Redirect to ride_request  │
+        │ messages thread           │
+        │ - Messages thread         │
+        │ - Contact info hidden     │
+        │ - Wait for driver accept  │
         └──────────────────────────┘
+```
+
+**Flow B: Driver creates RideRequest (offer)**
+```
+┌──────────────────────────────────────┐
+│ Driver clicks "Offer"                 │
+│ on Passenger's Request Ride          │
+└────────────────┬─────────────────────┘
+                 │
+    POST /rides/:id/ride_requests
+                 │
+        ┌────────▼─────────────────┐
+        │ RideRequestsController#  │
+        │ create                    │
+        │ - Validate ride exists    │
+        │ - direction = :offer      │
+        │ - requester = driver      │
+        └────────┬──────────────────┘
+                 │
+        ┌────────▼──────────────────────┐
+        │ PostgreSQL (Primary DB)      │
+        │ INSERT into ride_requests    │
+        │ ├─ ride_id                   │
+        │ ├─ requester_id = driver     │
+        │ ├─ direction = offer         │
+        │ ├─ status = pending          │
+        │ └─ UNIQUE(ride_id, requester)│
+        └────────┬──────────────────────┘
 ```
 
 ### 4. Chat (Polling via Stimulus)
@@ -374,34 +364,33 @@ Developer (bin/kamal deploy)
 │ User types message & submits       │
 └──────────┬───────────────────────┘
            │
-    POST /conversations/:id/messages
+    POST /ride_requests/:id/messages
            │
-    ┌──────▼──────────────────┐
-    │ MessagesController#     │
-    │ create                  │
-    │ - message_params        │
-    │ - Save Message          │
-    └──────┬──────────────────┘
+    ┌──────▼─────────────────────┐
+    │ RideRequestMessagesController#
+    │ create                      │
+    │ - message_params            │
+    │ - Save RideRequestMessage   │
+    └──────┬──────────────────────┘
            │
-    ┌──────▼──────────────────────────┐
-    │ PostgreSQL (Primary DB)        │
-    │ INSERT into messages           │
-    │ ├─ conversation_id             │
-    │ ├─ sender_id = current_user    │
-    │ ├─ body                        │
-    │ └─ read = false                │
-    └──────┬───────────────────────┘
+    ┌──────▼──────────────────────────────┐
+    │ PostgreSQL (Primary DB)             │
+    │ INSERT into ride_request_messages   │
+    │ ├─ ride_request_id                  │
+    │ ├─ sender_id = current_user         │
+    │ ├─ body                             │
+    │ └─ read = false                     │
+    └──────┬───────────────────────────┘
            │
     ┌──────▼────────────────────┐
     │ Respond with updated HTML │
-    │ (Turbo Frame or full page)│
+    │ (Turbo Frame)             │
     └──────┬───────────────────┘
            │
 ┌──────────▼──────────────────────────┐
-│ Stimulus Polling (messagePoll      │
-│ controller)                         │
+│ Stimulus Polling (ridePollController)
 │ - Interval: 10 seconds              │
-│ - GET /messages?conversation_id=:id│
+│ - GET /ride_requests/:id/messages   │
 │ - Fetch latest messages             │
 │ - Update DOM (Turbo)                │
 │ - Scroll to bottom                  │
@@ -412,17 +401,18 @@ Developer (bin/kamal deploy)
 
 ```
 ┌────────────────────────────────────┐
-│ After trip: User clicks Rate       │
+│ After ride expire: User clicks Rate│
 └──────────┬───────────────────────┘
            │
     GET /ratings/new?
-         conversation_id=:id
+     ride_request_id=:id
            │
-    ┌──────▼──────────────┐
-    │ RatingsController#  │
-    │ new                 │
-    │ - Show form         │
-    └──────┬──────────────┘
+    ┌──────▼──────────────────────┐
+    │ RatingsController#new       │
+    │ - Check: ride_request       │
+    │   accepted & ride expired   │
+    │ - Show form                 │
+    └──────┬──────────────────────┘
            │
       User rates 1-5 + comment
            │
@@ -435,17 +425,17 @@ Developer (bin/kamal deploy)
     ┌──────▼────────────────────────┐
     │ PostgreSQL (Primary DB)      │
     │ INSERT into ratings          │
-    │ ├─ conversation_id           │
+    │ ├─ ride_request_id           │
     │ ├─ rater_id                  │
     │ ├─ ratee_id                  │
     │ ├─ score                     │
-    │ └─ UNIQUE(conversation_id,   │
+    │ └─ UNIQUE(ride_request_id,   │
     │       rater_id)              │
     └──────┬───────────────────────┘
            │
     ┌──────▼─────────────────────────┐
-    │ RatingCalculator Service       │
-    │ - Find ratee (target user)     │
+    │ after_create callback          │
+    │ - Calculate avg_rating         │
     │ - SUM(ratings.score) / COUNT   │
     │ - Update User.avg_rating       │
     │ - Update User.rating_count     │
@@ -469,30 +459,20 @@ Developer (bin/kamal deploy)
 ```ruby
 # config/database.yml (production)
 production:
-  primary: &primary_production
-    adapter: postgresql
-    max_connections: 25      # Total pool size
-
-  cache:
-    <<: *primary_production  # Same pool config
-    database: roadmate_production_cache
-
-  queue:
-    <<: *primary_production  # Separate pool
-    database: roadmate_production_queue
-
-  cable:
-    <<: *primary_production
-    database: roadmate_production_cable
+  adapter: postgresql
+  database: roadmate_production
+  username: roadmate
+  password: <%= ENV["DB_PASSWORD"] %>
+  host: db.example.com
+  max_connections: 25      # Total pool size
+  checkout_timeout: 2.0
+  reaping_frequency: 10
 ```
 
 **Connection Flow:**
 ```
-Puma (5 threads) → 25 pool connections
-                   ├─ Primary DB (15 connections)
-                   ├─ Cache DB (5 connections)
-                   ├─ Queue DB (3 connections)
-                   └─ Cable DB (2 connections)
+Puma (5 threads) → Redis (cache/session)
+                → PostgreSQL (25 pool connections)
 ```
 
 ---
@@ -543,23 +523,23 @@ Per-Request:
   └────────────────────────────────┘
 ```
 
-### Password Security (Devise)
+### Password Security (has_secure_password)
 ```
 User Input: "MyP@ssw0rd"
     ↓
-Devise (BCrypt hashing)
+BCrypt hashing
     ↓
 Hashed: "$2b$12$abcd...efgh" (60 chars)
     ↓
-Stored in users.encrypted_password (VARCHAR)
+Stored in users.password_digest (VARCHAR)
     ↓
-On Login (via Devise):
+On Login:
     ↓
-Devise authenticates using encrypted_password
+user.authenticate(password) using password_digest
     ↓
 Time-constant comparison (resistant to timing attacks)
     ↓
-Session set (via Devise remember_me if checked)
+Session set: session[:user_id] = user.id (60 days)
 ```
 
 ### OTP (Password Reset)
@@ -584,15 +564,15 @@ Level 1: HTTP Cache (Thruster)
   - Static assets (CSS, JS, images)
   - TTL: Long (1 year for fingerprinted assets)
 
-Level 2: Rails Cache (Solid Cache DB or Redis)
+Level 2: Redis Cache
   - User data (ratings, profile)
-  - Query results (trending posts)
+  - Query results (active rides)
   - Session store
   - TTL: 1 hour default
 
 Level 3: Database
-  - Primary queries (active posts)
-  - Real-time data (messages)
+  - Primary queries (active rides)
+  - Real-time data (ride_request_messages)
   - Transactions (ratings)
 ```
 
@@ -612,17 +592,17 @@ scope :active, -> { where(status: :active).order(depart_at: :asc) }
 @posts = Post.active.limit(20)  # Efficient query
 ```
 
-### Background Jobs (Async)
+### Background Jobs (Async via Sidekiq)
 ```
 Sync (blocks user request):
-  user.posts.destroy_all  → Takes 2s → User waits
+  user.rides.destroy_all  → Takes 2s → User waits
 
-Async (via Solid Queue):
-  DeleteUserPostsJob.perform_later(user_id)
+Async (via Sidekiq):
+  DeleteUserRidesJob.perform_later(user_id)
                          ↓
-        Job queued in Queue DB
+        Job queued in Redis
                          ↓
-        Puma worker thread picks up
+        Sidekiq worker thread picks up
                          ↓
         Runs async → User sees success immediately
 ```
@@ -636,16 +616,17 @@ Async (via Solid Queue):
 # Development: Console
 Rails.logger.info "Message"  → Printed to STDOUT
 
-# Production: Docker
+# Production: Docker/Kamal
 Rails.logger.info "Message"  → Written to STDOUT
                              → Docker captures to host logs
+                             → View via: bin/kamal logs
                              → Can integrate with Datadog/ELK
 
 # Datadog Integration (Phase 2)
-config.logger = Logger.new($stdout)
-config.logger.extend ActiveSupport::Logger.broadcast(
-  Datadog::Tracing.trace("rails.action_controller")
-)
+Datadog.configure do |c|
+  c.service = "roadmate"
+  c.env = Rails.env
+end
 ```
 
 ### Error Tracking
@@ -751,16 +732,17 @@ Android:
 ```
 Single server, ~10k concurrent users
 - 1 Puma instance
-- Solid Queue in-process
+- Sidekiq worker (Redis queue)
 - PostgreSQL (single)
-- Local storage (Active Storage)
+- Redis (cache + session + job queue)
+- Local/S3 storage (Active Storage)
 ```
 
 ### Phase 2 (1k+ daily active users)
 ```
-Add Redis, replicas
+Add replicas, monitoring
 - Keep Puma single, upgrade CPU/RAM
-- Redis for caching + session store
+- Sidekiq on same or separate server
 - PostgreSQL read replicas
 - S3/R2 for storage
 - Datadog monitoring
@@ -770,7 +752,7 @@ Add Redis, replicas
 ```
 Multi-server, load balancing
 - Multiple Puma instances (Kamal + HAProxy/Nginx)
-- Separate job server (Solid Queue)
+- Separate Sidekiq job server
 - PostgreSQL primary + replicas
 - Redis cluster
 - CDN for static assets
@@ -814,12 +796,13 @@ Configuration:
 ## Summary
 
 **RoadMate uses a deliberately simple, scalable architecture:**
-- Full-stack Rails (velocity over complexity)
+- Full-stack Rails 8 (velocity over complexity)
 - PostgreSQL (reliable RDBMS, future GIS support)
-- Solid Queue (no external dependencies at MVP)
+- Sidekiq + Redis (background jobs, cache, session store)
 - Hotwire + Tailwind (real-time UX without SPA)
-- Kamal (Docker deployment, zero-downtime)
-- Polling for chat (not WebSocket)
+- Kamal or Render/Railway (Docker deployment, zero-downtime)
+- Polling for chat (10s interval, Turbo Frames, not WebSocket)
 - Progressive PWA (progressive enhancement)
+- has_secure_password (bcrypt, no Devise complexity)
 
 This design sacrifices some "cloud-native" patterns for **developer velocity and operational simplicity**, ideal for a solo-founder MVP.

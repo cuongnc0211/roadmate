@@ -7,8 +7,8 @@
 **Controllers**: Only `ApplicationController` (no domain controllers yet)
 **Views**: Only layout templates (no feature views yet)
 **Routes**: Only health check (`/up`)
-**Database**: Schema empty (only Solid* schemas for cache/queue/cable)
-**Jobs**: No domain jobs yet (only Solid Queue infrastructure)
+**Database**: Schema empty (ready for User, Ride, RideRequest, RideRequestMessage, Rating, OtpCode)
+**Jobs**: No domain jobs yet (Sidekiq infrastructure ready)
 
 This is a clean slate ready for Phase 1 (Auth) implementation.
 
@@ -180,12 +180,12 @@ CREATE INDEX ON users (phone);
 CREATE INDEX ON users (rating_count);  -- for "min 3 ratings" query
 ```
 
-### Posts Table
+### Rides Table
 ```sql
-CREATE TABLE posts (
+CREATE TABLE rides (
   id BIGINT PRIMARY KEY,
   user_id BIGINT NOT NULL,              -- FK to users
-  post_type INTEGER NOT NULL,           -- enum: 0=offer (driver), 1=request (passenger)
+  ride_type INTEGER NOT NULL,           -- enum: 0=offer (driver), 1=request (passenger)
   vehicle_type INTEGER NOT NULL,        -- enum: 0=motorbike, 1=car, 2=any
   origin VARCHAR NOT NULL,              -- "Hà Nội, Đống Đa" (text)
   destination VARCHAR NOT NULL,         -- "Hoà Lạc, Hà Nội" (text)
@@ -194,54 +194,58 @@ CREATE TABLE posts (
   depart_at TIMESTAMP NOT NULL,         -- UTC time
   price_suggestion INTEGER,             -- VNĐ, nullable
   seats_available INTEGER,              -- for offers only, nullable
-  status INTEGER DEFAULT 0,             -- enum: 0=active, 1=closed, 2=expired
+  status INTEGER DEFAULT 0,             -- enum: 0=active, 1=matched, 2=full, 3=expired, 4=cancelled
   recurring BOOLEAN DEFAULT false,
   recurring_days VARCHAR,               -- "1,2,3,4,5" = Mon-Fri
   note TEXT,                            -- "Gặp tại Thống Nhất, +84123456789"
   created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
-CREATE INDEX ON posts (user_id);
-CREATE INDEX ON posts (status, depart_at);  -- for active posts query
-CREATE INDEX ON posts (origin_district, dest_district);  -- for feed filtering
-CREATE INDEX ON posts (post_type);
+CREATE INDEX ON rides (user_id);
+CREATE INDEX ON rides (status, depart_at);  -- for active rides query
+CREATE INDEX ON rides (origin_district, dest_district);  -- for feed filtering
+CREATE INDEX ON rides (ride_type);
 ```
 
-### Conversations Table
+### RideRequests Table
 ```sql
-CREATE TABLE conversations (
+CREATE TABLE ride_requests (
   id BIGINT PRIMARY KEY,
-  post_id BIGINT NOT NULL,              -- FK to posts
-  initiator_id BIGINT NOT NULL,         -- FK to users (who clicked Liên hệ)
-  recipient_id BIGINT NOT NULL,         -- FK to users (post creator)
-  status INTEGER DEFAULT 0,             -- enum: 0=active, 1=closed
+  ride_id BIGINT NOT NULL,              -- FK to rides
+  requester_id BIGINT NOT NULL,         -- FK to users (who initiated)
+  direction INTEGER NOT NULL,           -- enum: 0=booking, 1=offer
+  status INTEGER DEFAULT 0,             -- enum: 0=pending, 1=accepted, 2=declined, 3=cancelled
+  seats INTEGER DEFAULT 1,              -- number of seats (booking)
+  price INTEGER,                        -- negotiated price (VNĐ)
+  note TEXT,
   created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
-CREATE UNIQUE INDEX ON conversations (post_id, initiator_id);  -- prevent duplicates
-CREATE INDEX ON conversations (recipient_id);
+CREATE UNIQUE INDEX ON ride_requests (ride_id, requester_id);  -- prevent duplicates
+CREATE INDEX ON ride_requests (requester_id);
+CREATE INDEX ON ride_requests (status);
 ```
 
-### Messages Table
+### RideRequestMessages Table
 ```sql
-CREATE TABLE messages (
+CREATE TABLE ride_request_messages (
   id BIGINT PRIMARY KEY,
-  conversation_id BIGINT NOT NULL,     -- FK to conversations
+  ride_request_id BIGINT NOT NULL,     -- FK to ride_requests
   sender_id BIGINT NOT NULL,            -- FK to users
   body TEXT NOT NULL,
   read BOOLEAN DEFAULT false,
   created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
-CREATE INDEX ON messages (conversation_id, created_at);  -- for message history
-CREATE INDEX ON messages (sender_id);
+CREATE INDEX ON ride_request_messages (ride_request_id, created_at);  -- for history
+CREATE INDEX ON ride_request_messages (sender_id);
 ```
 
 ### Ratings Table
 ```sql
 CREATE TABLE ratings (
   id BIGINT PRIMARY KEY,
-  conversation_id BIGINT NOT NULL,     -- FK to conversations
+  ride_request_id BIGINT NOT NULL,     -- FK to ride_requests
   rater_id BIGINT NOT NULL,             -- FK to users (who leaves rating)
   ratee_id BIGINT NOT NULL,             -- FK to users (who is rated)
   score INTEGER NOT NULL,               -- 1-5
@@ -249,7 +253,7 @@ CREATE TABLE ratings (
   created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
-CREATE UNIQUE INDEX ON ratings (conversation_id, rater_id);  -- one rating per rater
+CREATE UNIQUE INDEX ON ratings (ride_request_id, rater_id);  -- one rating per rater/request
 CREATE INDEX ON ratings (ratee_id);
 ```
 
@@ -276,17 +280,20 @@ Defined in models (will be created in Phase 1+):
 # User#vehicle_type
 enum vehicle_type: { none: 0, motorbike: 1, car: 2 }
 
-# Post#post_type
-enum post_type: { offer: 0, request: 1 }
+# Ride#ride_type
+enum ride_type: { offer: 0, request: 1 }
 
-# Post#vehicle_type (independent from User#vehicle_type)
+# Ride#vehicle_type (independent from User#vehicle_type)
 enum vehicle_type: { motorbike: 0, car: 1, any: 2 }
 
-# Post#status
-enum status: { active: 0, closed: 1, expired: 2 }
+# Ride#status (5 states)
+enum status: { active: 0, matched: 1, full: 2, expired: 3, cancelled: 4 }
 
-# Conversation#status
-enum status: { active: 0, closed: 1 }
+# RideRequest#direction (who initiated)
+enum direction: { booking: 0, offer: 1 }
+
+# RideRequest#status
+enum status: { pending: 0, accepted: 1, declined: 2, cancelled: 3 }
 ```
 
 ---
@@ -372,16 +379,12 @@ Key settings:
 - `config.log_to_stdout = true` (Docker logging)
 - Caching enabled, eager loading enabled
 
-### `config/cable.yml`
-Solid Cable (NOT USED in MVP, only plumbing):
-- Adapter: `solid_cable` (database-backed, no Redis)
-- Database: `cable` (separate production DB)
-
-### `config/queue.yml`
-Solid Queue (background jobs):
-- Adapter: `solid_queue` (database-backed)
-- Database: `queue` (separate production DB)
-- Concurrency: 1 (configurable)
+### `config/sidekiq.yml`
+Sidekiq (background jobs):
+- Adapter: Redis
+- Concurrency: 3 (configurable)
+- Timeout: 25 seconds
+- Queues: default, critical
 
 ### `.rubocop.yml`
 Linting config (Rails Omakase defaults):

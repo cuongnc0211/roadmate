@@ -339,15 +339,19 @@
 
 | Term | Definition |
 |------|-----------|
-| **Post** | An offer ("I have a seat") or request ("I need a ride") |
-| **Offer** | Post type: driver offering a ride with available seats |
-| **Request** | Post type: passenger looking for a ride |
-| **Conversation** | Chat thread initiated by "Liên hệ" (contact) on a post |
-| **Contact Reveal** | Phone + Zalo link shown when conversation is created |
-| **Rating** | 1-5 score + optional comment left after conversation |
-| **Recurring** | Post that auto-recreates daily (e.g., M-F commute) |
+| **Ride** | An offer ("I have a seat") or request ("I need a ride") |
+| **Offer** | Ride type: driver offering a ride with available seats |
+| **Request** | Ride type: passenger looking for a ride |
+| **RideRequest** | Booking (passenger→driver) or offer (driver→passenger) with messaging thread |
+| **Booking** | Direction: passenger creates RideRequest on driver's offer |
+| **Offer (direction)** | Direction: driver creates RideRequest on passenger's request |
+| **Contact Reveal** | Phone + Zalo link shown when RideRequest is created |
+| **Rating** | 1-5 score + optional comment left after RideRequest accepted & ride expired |
+| **Recurring** | Ride that auto-recreates daily (e.g., M-F commute) |
 | **OTP** | One-time password (6 digits) sent via SMS for password reset |
 | **PWA** | Progressive Web App (web app with offline, home screen icon) |
+| **Flow A** | Driver posts offer → Passenger books → Driver accepts |
+| **Flow B** | Passenger posts request → Driver offers → Passenger accepts |
 
 ---
 

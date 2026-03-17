@@ -141,77 +141,87 @@ end
 
 ## Model Conventions
 
-### Association Definitions (with Devise)
+### Association Definitions (with has_secure_password)
 ```ruby
 class User < ApplicationRecord
-  # Devise modules (define first)
-  devise :database_authenticatable, :registerable, :rememberable
+  # Password hashing (define first)
+  has_secure_password
 
-  # Configure Devise to use phone instead of email
-  self.authentication_keys = [:phone]
-
-  # Associations (after Devise)
-  has_many :posts, dependent: :destroy
-  has_many :conversations_initiated, class_name: "Conversation", foreign_key: :initiator_id, dependent: :destroy
-  has_many :conversations_received, class_name: "Conversation", foreign_key: :recipient_id, dependent: :destroy
+  # Associations
+  has_many :rides, dependent: :destroy
+  has_many :ride_requests, foreign_key: :requester_id, dependent: :destroy
   has_many :ratings_given, class_name: "Rating", foreign_key: :rater_id, dependent: :destroy
   has_many :ratings_received, class_name: "Rating", foreign_key: :ratee_id
 
-  # Enums (after associations)
-  enum vehicle_type: { no_vehicle: 0, motorbike: 1, car: 2 }
+  # Enums
+  enum vehicle_type: { none: 0, motorbike: 1, car: 2 }
 
-  # Validations (after enums)
-  validates :phone, presence: true, uniqueness: true, format: { with: /\A\+84\d{9,10}\z/ }
+  # Validations
+  validates :phone, presence: true, uniqueness: true, format: { with: /\A(\+84|0)\d{9,10}\z/ }
   validates :name, presence: true, length: { minimum: 2, maximum: 100 }
+  validates :password, presence: true, on: :create
+  validates :password, length: { minimum: 6 }, allow_nil: true
 
-  # Scopes (after validations)
+  # Scopes
   scope :with_rating, -> { where("rating_count >= 3") }
   scope :drivers, -> { where(vehicle_type: %i[motorbike car]) }
 
-  # Callbacks (after scopes)
+  # Callbacks
   before_save :normalize_phone
 
-  # Note: Devise provides password validation & encrypted_password column
-  # Use devise to handle authentication — no manual authenticate() method needed
+  # Notes:
+  # - has_secure_password provides: password=, password_digest, authenticate(password)
+  # - Session managed via session[:user_id] (60 days via Rails.application.config.session_options)
+  # - No Devise complexity: just phone + password + session
 
   private
 
   def normalize_phone
     # Format: +84 or 0xx → +84xxxxxxxxx
-    self.phone = phone.sub(/^0/, '+84').sub(/^\+?84/, '+84') if phone.present?
+    if phone.present?
+      self.phone = phone.sub(/^0/, '+84') if phone.start_with?('0')
+      self.phone = '+84' + phone.sub(/^\+84/, '') if phone.start_with?('+84')
+    end
   end
 end
 ```
 
 ### Validation Pattern
 ```ruby
-class Post < ApplicationRecord
+class Ride < ApplicationRecord
   validates :user_id, presence: true
-  validates :post_type, inclusion: { in: post_types.keys }
-  validates :vehicle_type, inclusion: { in: %i[motorbike car] }  # Updated: no 'any' in enum
+  validates :ride_type, inclusion: { in: ride_types.keys }
+  validates :vehicle_type, inclusion: { in: %i[motorbike car any] }
   validates :origin, :destination, presence: true
   validates :depart_at, presence: true
   validates :depart_at, comparison: { greater_than: Time.current, message: "must be in the future" }
   validates :price_suggestion, numericality: { greater_than: 0, less_than_or_equal_to: 500_000 }, allow_nil: true
   validates :seats_available, numericality: { greater_than: 0, less_than_or_equal_to: 8 }, if: :offer?
+  validates :origin_district, :dest_district, presence: true
 end
 ```
 
 ### Enum Usage
 ```ruby
 # Good: Define with hash in model
-class Post < ApplicationRecord
-  enum post_type: { offer: 0, request: 1 }
-  enum status: { active: 0, closed: 1, expired: 2 }
+class Ride < ApplicationRecord
+  enum ride_type: { offer: 0, request: 1 }
+  enum status: { active: 0, matched: 1, full: 2, expired: 3, cancelled: 4 }
+end
+
+class RideRequest < ApplicationRecord
+  enum direction: { booking: 0, offer: 1 }
+  enum status: { pending: 0, accepted: 1, declined: 2, cancelled: 3 }
 end
 
 # Usage
-post.offer?                  # true/false
-post.post_type = :request
-post.active?                 # t/f
+ride.offer?                  # true/false
+ride.ride_type = :request
+ride.active?                 # true/false
+ride_request.booking?        # true/false
 
 # Bad: String enums, no validation
-post.post_type = "offer"     # Invalid
+ride.ride_type = "offer"     # Invalid
 ```
 
 ---
@@ -222,59 +232,60 @@ post.post_type = "offer"     # Invalid
 ```ruby
 # config/routes.rb
 Rails.application.routes.draw do
-  root "posts#index"
+  root "rides#index"
 
   resources :users, only: %i[new create show edit update]
-  resources :posts, only: %i[index new create show edit update destroy] do
-    member do
-      post :contact  # POST /posts/:id/contact → create conversation
+  resources :rides, only: %i[index new create show edit update destroy] do
+    resources :ride_requests, only: %i[index create] do
+      member do
+        patch :accept   # PATCH /rides/:ride_id/ride_requests/:id/accept
+        patch :decline  # PATCH /rides/:ride_id/ride_requests/:id/decline
+      end
+      resources :messages, only: %i[index create], controller: 'ride_request_messages'
     end
   end
 
-  resources :conversations, only: %i[index show] do
-    resources :messages, only: %i[create]  # POST /conversations/:conversation_id/messages
-  end
-
-  resources :ratings, only: %i[create]
+  resources :ratings, only: %i[new create]
 end
 ```
 
 ### Controller Actions
 ```ruby
-class PostsController < ApplicationController
+class RidesController < ApplicationController
   before_action :authenticate_user!, except: %i[index show]
-  before_action :set_post, only: %i[show edit update destroy contact]
+  before_action :set_ride, only: %i[show edit update destroy]
   before_action :authorize_user!, only: %i[edit update destroy]
 
-  # Index: List all posts with filters
+  # Index: List all rides with filters
   def index
-    @posts = Post.active
-                  .where(origin_district: filter_params[:origin_district]) if filter_params[:origin_district]
-                  .where(post_type: filter_params[:post_type]) if filter_params[:post_type]
+    @rides = Ride.active
+                  .where(origin_district: filter_params[:origin_district])
+                  .where(dest_district: filter_params[:dest_district])
                   .order(depart_at: :asc)
                   .page(params[:page])
 
     render :index
   end
 
-  # New: Show form for new post
+  # New: Show form for new ride
   def new
-    @post = current_user.posts.build
+    @ride = current_user.rides.build
     render :new
   end
 
-  # Create: Save new post
+  # Create: Save new ride
   def create
-    @post = current_user.posts.build(post_params)
-    if @post.save
-      redirect_to @post, notice: "Post created"
+    @ride = current_user.rides.build(ride_params)
+    if @ride.save
+      redirect_to @ride, notice: "Ride created"
     else
       render :new, status: :unprocessable_entity
     end
   end
 
-  # Show: Display single post
+  # Show: Display single ride
   def show
+    @ride_requests = @ride.ride_requests.pending
     render :show
   end
 
@@ -285,69 +296,73 @@ class PostsController < ApplicationController
 
   # Update: Save changes
   def update
-    if @post.update(post_params)
-      redirect_to @post, notice: "Post updated"
+    if @ride.update(ride_params)
+      redirect_to @ride, notice: "Ride updated"
     else
       render :edit, status: :unprocessable_entity
     end
   end
 
-  # Destroy: Delete post
+  # Destroy: Delete ride
   def destroy
-    @post.destroy
-    redirect_to posts_url, notice: "Post deleted"
-  end
-
-  # Contact: Create conversation (custom action)
-  def contact
-    conversation = Conversation.find_or_create_by(post_id: @post.id, initiator_id: current_user.id)
-    redirect_to conversation, notice: "Contact request sent"
-  rescue StandardError => e
-    redirect_to @post, alert: e.message
+    @ride.destroy
+    redirect_to rides_url, notice: "Ride deleted"
   end
 
   private
 
-  def set_post
-    @post = Post.find(params[:id])
+  def set_ride
+    @ride = Ride.find(params[:id])
   end
 
   def authorize_user!
-    redirect_to @post, alert: "Unauthorized" unless @post.user_id == current_user.id
+    redirect_to @ride, alert: "Unauthorized" unless @ride.user_id == current_user.id
   end
 
-  def post_params
-    params.require(:post).permit(:post_type, :vehicle_type, :origin, :destination, :origin_district, :dest_district, :depart_at, :price_suggestion, :seats_available, :note, :recurring, :recurring_days)
+  def ride_params
+    params.require(:ride).permit(:ride_type, :vehicle_type, :origin, :destination,
+                                   :origin_district, :dest_district, :depart_at,
+                                   :price_suggestion, :seats_available, :note,
+                                   :recurring, :recurring_days)
   end
 
   def filter_params
-    params.permit(:origin_district, :dest_district, :post_type, :vehicle_type)
+    params.permit(:origin_district, :dest_district, :ride_type, :vehicle_type)
   end
 end
 ```
 
-### Authentication & Authorization (with Devise)
+### Authentication & Authorization (with has_secure_password)
 ```ruby
 class ApplicationController < ActionController::Base
-  # Devise provides these helpers automatically:
-  # - current_user: Returns the logged-in User or nil
-  # - user_signed_in?: Returns true if user is logged in
-  # - authenticate_user!: Redirects to login if not authenticated
-
-  before_action :authenticate_user!, except: :index  # Example usage
+  helper_method :current_user, :user_signed_in?
 
   private
 
-  # Optional: Add custom authorization logic if needed
+  def current_user
+    return @current_user if defined?(@current_user)
+    @current_user = session[:user_id] ? User.find_by(id: session[:user_id]) : nil
+  end
+
+  def user_signed_in?
+    current_user.present?
+  end
+
+  def authenticate_user!
+    redirect_to new_session_path, alert: "Sign in required" unless user_signed_in?
+  end
+
   def authorize_user!(user)
     redirect_to root_path, alert: "Unauthorized" unless current_user == user
   end
 end
 
-# Routes automatically generated by Devise:
-# POST   /users (signup)
-# GET    /users/sign_in (login)
-# DELETE /users/sign_out (logout)
+# Manual routes (no Devise generators):
+# GET    /users/new (signup form)
+# POST   /users (create account)
+# GET    /sessions/new (login form)
+# POST   /sessions (create session)
+# DELETE /sessions (logout)
 # GET    /users/edit (edit profile)
 # PATCH  /users (update profile)
 ```
@@ -358,47 +373,46 @@ end
 
 ### Template Organization
 ```erb
-<!-- app/views/posts/index.html.erb -->
+<!-- app/views/rides/index.html.erb -->
 <main class="container mx-auto px-4 py-8">
   <h1>Find a Ride</h1>
 
-  <%= render "shared/filters", posts_path: posts_path %>
+  <%= render "shared/filters" %>
 
-  <div id="posts-list">
-    <%= render @posts, locals: { user: current_user } %>
+  <div id="rides-list">
+    <%= render @rides, locals: { user: current_user } %>
   </div>
 
-  <%= paginate @posts %>
+  <%= paginate @rides %>
 </main>
 ```
 
 ### Partial Usage
 ```erb
-<!-- app/views/posts/_post.html.erb -->
+<!-- app/views/rides/_ride.html.erb -->
 <div class="card mb-4">
-  <h3><%= post.destination %></h3>
-  <p>From: <%= post.origin %> | Departure: <%= post.depart_at.strftime('%H:%M') %></p>
-  <p>Price: <%= number_to_currency(post.price_suggestion, unit: "₫") %></p>
+  <h3><%= ride.destination %></h3>
+  <p>From: <%= ride.origin %> | Departure: <%= ride.depart_at.strftime('%H:%M') %></p>
+  <p>Price: <%= number_to_currency(ride.price_suggestion, unit: "₫") %></p>
 
-  <% if post.user == user %>
-    <%= link_to "Edit", edit_post_path(post), class: "btn btn-secondary" %>
-    <%= link_to "Close", post_path(post), method: :delete, class: "btn btn-danger" %>
+  <% if ride.user == user %>
+    <%= link_to "Edit", edit_ride_path(ride), class: "btn btn-secondary" %>
+    <%= link_to "Close", ride_path(ride), method: :delete, class: "btn btn-danger" %>
   <% else %>
-    <%= link_to "Contact", contact_post_path(post), method: :post, class: "btn btn-primary" %>
+    <%= link_to "Book/Offer", ride_ride_requests_path(ride), method: :post, class: "btn btn-primary" %>
   <% end %>
 </div>
 ```
 
 ### Turbo Frames
 ```erb
-<!-- Turbo Frame for dynamic updates -->
-<%= turbo_frame_tag "messages-#{@conversation.id}", src: messages_path(@conversation), loading: "lazy" do %>
+<!-- Turbo Frame for ride request messages -->
+<%= turbo_frame_tag "messages-#{@ride_request.id}", src: ride_ride_request_messages_path(@ride, @ride_request), loading: "lazy" do %>
   <p>Loading messages...</p>
 <% end %>
 
 <!-- Form with Turbo -->
-<%= form_with model: @message, local: true, class: "mt-4" do |f| %>
-  <%= f.hidden_field :conversation_id, value: @conversation.id %>
+<%= form_with model: [@ride, @ride_request, @message], local: true, class: "mt-4" do |f| %>
   <%= f.text_area :body, placeholder: "Type a message...", class: "form-control" %>
   <%= f.submit "Send", class: "btn btn-primary" %>
 <% end %>
@@ -407,7 +421,8 @@ end
 ### Stimulus Integration
 ```erb
 <!-- Message polling with Stimulus -->
-<div data-controller="message-poll" data-message-poll-url="<%= messages_path(@conversation) %>">
+<div data-controller="ride-message-poll"
+     data-ride-message-poll-url="<%= ride_ride_request_messages_path(@ride, @ride_request) %>">
   <div id="messages">
     <%= render @messages %>
   </div>
@@ -433,7 +448,7 @@ export default class extends Controller {
 
   submit(event) {
     this.submitTarget.disabled = true
-    this.spinnerTarget.classList.remove("hidden")
+    this.spinnerTarget?.classList.remove("hidden")
   }
 
   disconnect() {
@@ -442,13 +457,13 @@ export default class extends Controller {
 }
 ```
 
-### Stimulus for Message Polling
+### Stimulus for Ride Message Polling (10s interval)
 ```javascript
-// app/javascript/controllers/message_poll_controller.js
+// app/javascript/controllers/ride_message_poll_controller.js
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static values = { url: String, interval: Number }
+  static values = { url: String, interval: { type: Number, default: 10 } }
 
   connect() {
     this.poll()
@@ -463,68 +478,112 @@ export default class extends Controller {
     fetch(this.urlValue)
       .then(response => response.text())
       .then(html => {
+        // Update via Turbo Frame
+        Turbo.connectStreamSource({
+          send: (data) => { /* noop */ }
+        })
         this.element.innerHTML = html
         this.scrollToBottom()
       })
   }
 
   scrollToBottom() {
-    this.element.scrollTop = this.element.scrollHeight
+    const messages = this.element.querySelector('[id*="messages"]')
+    if (messages) messages.scrollTop = messages.scrollHeight
   }
 }
 ```
 
 ---
 
-## Background Jobs (Solid Queue)
+## Background Jobs (Sidekiq + Redis)
 
 ### Job Pattern
 ```ruby
-# app/jobs/post_expiry_job.rb
-class PostExpiryJob < ApplicationJob
-  queue_as :default  # or :critical, :low
+# app/jobs/expire_rides_job.rb
+class ExpireRidesJob < ApplicationJob
+  queue_as :default
 
   def perform
-    Post.where(status: :active)
-        .where("created_at < ?", 24.hours.ago)
+    # Expire rides: depart_at < 1 hour ago
+    Ride.where(status: %i[active matched])
+        .where("depart_at < ?", 1.hour.ago)
         .update_all(status: :expired)
 
-    Rails.logger.info "Expired #{Post.expired.count} posts"
+    # Mark full rides if no seats left
+    Ride.active.where(seats_available: 0)
+        .update_all(status: :full)
+
+    Rails.logger.info "Expired #{Ride.expired.count} rides"
   rescue StandardError => e
-    Rails.logger.error "PostExpiryJob failed: #{e.message}"
+    Rails.logger.error "ExpireRidesJob failed: #{e.message}"
     raise
   end
 end
 
-# Schedule in config/recurring.yml
-recurring_jobs:
-  - class: PostExpiryJob
-    schedule: every 1 hour
+# app/jobs/recurring_ride_job.rb
+class RecurringRideJob < ApplicationJob
+  def perform(ride_id)
+    ride = Ride.find(ride_id)
+    return unless ride.recurring? && ride.expired?
+
+    # Create next day's ride if matches recurring_days
+    tomorrow = ride.depart_at + 1.day
+    if ride.recurring_days.include?(tomorrow.wday)
+      Ride.create(
+        user_id: ride.user_id,
+        ride_type: ride.ride_type,
+        vehicle_type: ride.vehicle_type,
+        origin: ride.origin,
+        destination: ride.destination,
+        origin_district: ride.origin_district,
+        dest_district: ride.dest_district,
+        depart_at: tomorrow,
+        price_suggestion: ride.price_suggestion,
+        seats_available: ride.seats_available,
+        note: ride.note,
+        recurring: true,
+        recurring_days: ride.recurring_days
+      )
+    end
+  end
+end
+
+# app/jobs/otp_cleanup_job.rb
+class OtpCleanupJob < ApplicationJob
+  def perform
+    OtpCode.where("expires_at < ?", Time.current)
+           .or(OtpCode.where(used: true))
+           .delete_all
+  end
+end
 ```
 
-### Scheduling
+### Scheduling (Sidekiq)
 ```ruby
-# Explicit scheduling in Rails.application.config.after_initialize
-# app/config/environments/production.rb
-config.after_initialize do
-  scheduler = Solid::Queue::Schedule.new("db/queue_schedule.yml")
-  scheduler.register
-end
+# config/sidekiq.yml
+:concurrency: 3
+:timeout: 25
+:verbose: false
+:queues:
+  - default
+  - critical
 
-# Or use a cron task in lib/tasks/scheduler.rake
-desc "Enqueue recurring jobs"
-task enqueue_jobs: :environment do
-  PostExpiryJob.perform_later
-  RecurringPostCreatorJob.perform_later
-  OtpCodeCleanupJob.perform_later
-end
+# Or use Sidekiq::Cron (gem 'sidekiq-cron')
+Sidekiq::Cron::Job.create(
+  name: 'ExpireRides',
+  cron: '*/15 * * * *',  # Every 15 min
+  class: 'ExpireRidesJob'
+)
 ```
 
 ---
 
-## Testing Strategy (Future)
+## Testing Strategy (Minimal at MVP)
 
-### Test File Structure
+**Note:** No automated tests at MVP. Manual testing only. When tests added, follow RSpec + FactoryBot.
+
+### Test File Structure Example
 ```ruby
 # spec/models/user_spec.rb
 RSpec.describe User do
@@ -536,50 +595,49 @@ RSpec.describe User do
   describe "#authenticate" do
     let(:user) { create(:user, password: "secret123") }
 
-    it "returns true with correct password" do
-      expect(user.authenticate("secret123")).to be true
+    it "authenticates with correct password" do
+      expect(user.authenticate("secret123")).to be_truthy
     end
 
     it "returns false with incorrect password" do
-      expect(user.authenticate("wrong")).to be false
+      expect(user.authenticate("wrong")).to be_falsy
     end
   end
 end
 
-# spec/requests/posts_spec.rb
-RSpec.describe "Posts" do
-  describe "GET /posts" do
-    it "returns all active posts" do
-      create(:post, status: :active)
-      create(:post, status: :expired)
+# spec/requests/rides_spec.rb
+RSpec.describe "Rides" do
+  describe "GET /rides" do
+    it "returns all active rides" do
+      create(:ride, status: :active)
+      create(:ride, status: :expired)
 
-      get posts_path
+      get rides_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("active")
-      expect(response.body).not_to include("expired")
     end
   end
 end
 ```
 
-### Factory Setup (with Devise)
+### Factory Setup (has_secure_password)
 ```ruby
 # spec/factories/users.rb
 FactoryBot.define do
   factory :user do
     phone { "+84" + Faker::Number.number(digits: 9).to_s }
-    password { "password123" }  # Devise handles encryption
+    password { "password123" }
     password_confirmation { "password123" }
     name { Faker::Name.name }
-    vehicle_type { :no_vehicle }
+    vehicle_type { :none }
   end
 end
 
-# spec/factories/posts.rb
+# spec/factories/rides.rb
 FactoryBot.define do
-  factory :post do
+  factory :ride do
     user
-    post_type { :offer }
+    ride_type { :offer }
     vehicle_type { :car }
     origin { "Hà Nội, Đống Đa" }
     destination { "Hoà Lạc" }

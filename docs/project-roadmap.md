@@ -19,35 +19,34 @@
 **Status**: Not started
 
 **Key Features**:
-- [ ] User model + phone/password auth (Devise)
-- [ ] Session management (60-day cookie, Devise rememberable)
-- [ ] Signup → form validation → create User (Devise registrations)
-- [ ] Login → authenticate → redirect to feed (Devise sessions)
+- [ ] User model + phone/password auth (has_secure_password)
+- [ ] Session management (60-day cookie, session[:user_id])
+- [ ] Signup → form validation → create User (phone + password)
+- [ ] Login → authenticate with password → redirect to feed
 - [ ] Profile view (show user info + rating)
 - [ ] Profile edit (name, avatar, vehicle, Zalo link)
-- [ ] Logout
+- [ ] Logout (clear session)
 - [ ] Password reset via SMS OTP (ESMS integration)
 - [ ] OTP code generation, validation, cleanup
 
 **Database**:
-- Create `users` table (phone, encrypted_password, name, avatar_url, zalo_link, vehicle_type, available_seats, avg_rating, rating_count, devise columns)
+- Create `users` table (phone, password_digest, name, avatar_url, zalo_link, vehicle_type, vehicle_plate, available_seats, avg_rating, rating_count)
 - Create `otp_codes` table (phone, code, expires_at, used)
-- Devise provides: encrypted_password, remember_created_at, and other auth columns
+- Use password_digest (has_secure_password standard column)
 
 **Views**:
 - `users/new` (signup form)
 - `sessions/new` (login form)
 - `users/show` (profile)
 - `users/edit` (edit profile)
-- `password_reset/new` (forgot password form)
-- `password_reset/confirm` (OTP entry)
+- `password_resets/new` (forgot password form)
+- `password_resets/edit` (OTP entry + new password)
 
 **Controllers**:
-- `Users::RegistrationsController` (overrides Devise, handles phone normalization)
-- `Users::SessionsController` (overrides Devise, handles phone authentication)
-- `ProfilesController` (show, edit, update — separate from Devise)
-- `PasswordResetController` (new, create — SMS OTP fallback)
-- `OtpCodesController` (create, verify)
+- `UsersController` (new, create, show, edit, update)
+- `SessionsController` (new, create, destroy)
+- `PasswordResetsController` (new, create, edit, update)
+- `OtpCodesController` (verify OTP)
 
 **Testing**:
 - Manual login/logout flow
@@ -66,117 +65,114 @@
 
 ---
 
-### Phase 2: Posts & Feed (Weeks 3-4)
+### Phase 2: Rides & Feed (Weeks 3-4)
 
-**Objective**: Drivers and passengers can create posts, view feed, filter.
+**Objective**: Drivers and passengers can create rides, view feed, filter.
 
 **Status**: Not started
 
 **Key Features**:
-- [ ] Post model (offer/request, route, time, price, seats)
-- [ ] Create post: offer ("I have a seat") or request ("I need a ride")
-- [ ] Edit own post
-- [ ] Close (manually) or expire (auto after 24h) post
-- [ ] Feed: list all active posts
-- [ ] Filter: by origin district, destination district, time range, vehicle type
+- [ ] Ride model (offer/request, route, time, price, seats)
+- [ ] Create ride: offer ("I have a seat") or request ("I need a ride")
+- [ ] Edit own ride
+- [ ] Close (manually) or expire (auto after 1h) ride
+- [ ] Feed: list all active rides
+- [ ] Filter: by origin district, destination district, vehicle type
 - [ ] Sort: by departure time (ascending)
-- [ ] Pagination: 20 posts per page
-- [ ] Post detail view (show route, driver/passenger info, comments)
-- [ ] Background job: auto-expire posts after 24h
+- [ ] Pagination: 20 rides per page
+- [ ] Ride detail view (show route, driver/passenger info)
+- [ ] Background job: auto-expire rides after 1h, mark full rides
 
 **Database**:
-- Create `posts` table (user_id, post_type, vehicle_type, origin, destination, origin_district, dest_district, depart_at, price_suggestion, seats_available, status, recurring, recurring_days, note)
+- Create `rides` table (user_id, ride_type, vehicle_type, origin, destination, origin_district, dest_district, depart_at, price_suggestion, seats_available, status, recurring, recurring_days, note)
 - Add indexes: (status, depart_at), (origin_district, dest_district), (user_id)
 
 **Views**:
-- `posts/index` (feed with filters)
-- `posts/new` (choose type: offer or request)
-- `posts/new_offer` (offer form)
-- `posts/new_request` (request form)
-- `posts/show` (post detail)
-- `posts/edit` (edit form)
-- `my_posts/index` (user's posts)
+- `rides/index` (feed with filters)
+- `rides/new` (choose type: offer or request)
+- `rides/new_offer` (offer form)
+- `rides/new_request` (request form)
+- `rides/show` (ride detail)
+- `rides/edit` (edit form)
+- `my_rides/index` (user's rides)
 
 **Controllers**:
-- `PostsController` (index, new, create, show, edit, update, destroy)
-- `MyPostsController` (index)
-
-**Services**:
-- `PostCreator` (validate, create, handle recurring)
-- `PostExpirer` (Solid Queue job)
+- `RidesController` (index, new, create, show, edit, update, destroy)
+- `MyRidesController` (index)
 
 **Jobs**:
-- `PostExpiryJob` (hourly: find posts created >24h ago, mark as expired)
+- `ExpireRidesJob` (every 15min: expire rides depart_at < 1h ago, mark full rides)
 
 **Testing**:
-- Create offer/request post
-- Filter by district & time
-- Auto-expiry after 24h
-- Cannot edit other user's posts
+- Create offer/request ride
+- Filter by district
+- Auto-expiry after 1h
+- Cannot edit other user's rides
 - Pagination works
 
 **Exit Criteria**:
-- Can create post (offer/request)
-- Feed displays active posts filtered
-- Posts auto-expire after 24h
-- Own posts show edit/delete buttons
+- Can create ride (offer/request)
+- Feed displays active rides filtered
+- Rides auto-expire after 1h
+- Own rides show edit/delete buttons
+- Ride status: active → matched/full/expired
 
 ---
 
-### Phase 3: Contact & Chat (Weeks 5-6)
+### Phase 3: RideRequests & Chat (Weeks 5-6)
 
-**Objective**: Users can initiate contact and message each other.
+**Objective**: Users can initiate contact and message each other via RideRequests.
 
 **Status**: Not started
 
 **Key Features**:
-- [ ] Contact button on post detail ("Liên hệ")
-- [ ] Create conversation on click
-- [ ] Display driver/passenger phone + Zalo link in conversation
-- [ ] Message form + message list
+- [ ] Book/Offer button on ride detail
+- [ ] Create RideRequest (booking or offer) on click
+- [ ] Display driver/passenger phone + Zalo link in thread
+- [ ] Message form + message list in RideRequest thread
 - [ ] In-app messaging (Turbo Frames)
 - [ ] Stimulus polling for new messages (10s interval)
 - [ ] Mark messages as read
-- [ ] Conversation list (inbox)
-- [ ] Cannot create conversation for your own post
+- [ ] RideRequest list (inbox)
+- [ ] Cannot create RideRequest for your own ride
+- [ ] Accept/decline RideRequest actions
+- [ ] Auto-decline other requests when one accepted
 
 **Database**:
-- Create `conversations` table (post_id, initiator_id, recipient_id, status)
-- Create `messages` table (conversation_id, sender_id, body, read)
-- Add indexes: (post_id, initiator_id) UNIQUE, (conversation_id, created_at)
+- Create `ride_requests` table (ride_id, requester_id, direction, status, seats, price, note)
+- Create `ride_request_messages` table (ride_request_id, sender_id, body, read)
+- Add indexes: (ride_id, requester_id) UNIQUE, (ride_request_id, created_at)
 
 **Views**:
-- `conversations/index` (inbox list)
-- `conversations/show` (chat interface)
-- `messages/_message` (partial)
-- `messages/_form` (message input)
+- `ride_requests/index` (inbox list)
+- `ride_requests/show` (with messages thread)
+- `ride_request_messages/_message` (partial)
+- `ride_request_messages/_form` (message input)
 
 **Controllers**:
-- `ConversationsController` (index, show, destroy)
-- `MessagesController` (create)
-- `PostsController#contact` (initiate contact)
-
-**Services**:
-- `ConversationInitiator` (create conversation, check user != post.user)
+- `RideRequestsController` (index, create, accept, decline)
+- `RideRequestMessagesController` (index, create)
 
 **JavaScript (Stimulus)**:
-- `message_poll_controller.js` (fetch messages every 10s, update DOM)
+- `ride_message_poll_controller.js` (fetch messages every 10s)
 
 **Testing**:
-- Click "Liên hệ" → conversation created
-- Phone + Zalo displayed
+- Click Book/Offer → RideRequest created
+- Phone + Zalo displayed after creation
 - Send message → stored + appears immediately
-- Polling fetches new messages
-- Cannot contact own posts
+- Polling fetches new messages (every 10s)
+- Cannot create request on own rides
+- Accept/decline work, auto-decline others
 - Read/unread tracking
 
 **Exit Criteria**:
-- Can initiate conversation via "Liên hệ" button
-- Can send/receive messages in real-time
-- Phone + Zalo link visible after conversation
-- Polling updates messages without page reload
+- Can initiate RideRequest (booking or offer)
+- Can send/receive messages in RideRequest thread
+- Phone + Zalo visible immediately in thread
+- Polling updates without page reload
+- Two flows (Flow A & B) working
 
-**Note**: No WebSocket (polling only for MVP simplicity)
+**Note**: Polling only (no WebSocket at MVP)
 
 ---
 
@@ -196,8 +192,8 @@
 - [ ] Rating calculations (average, weighted)
 
 **Database**:
-- Create `ratings` table (conversation_id, rater_id, ratee_id, score, comment)
-- Add index: (conversation_id, rater_id) UNIQUE
+- Create `ratings` table (ride_request_id, rater_id, ratee_id, score, comment)
+- Add index: (ride_request_id, rater_id) UNIQUE
 - Add index: (ratee_id)
 
 **Views**:
@@ -212,16 +208,18 @@
 - `RatingCalculator` (update User avg_rating + rating_count)
 
 **Testing**:
-- Cannot rate without conversation
+- Cannot rate without accepted RideRequest
+- Cannot rate until ride expired
 - Can rate multiple users
-- Cannot rate twice for same conversation
+- Cannot rate twice for same RideRequest
 - avg_rating updates correctly
 - Profile shows rating only if >= 3 reviews
 
 **Exit Criteria**:
-- Can leave rating after conversation
+- Can leave rating after RideRequest accepted & ride expired
 - Avg rating displayed on profile (if >= 3 reviews)
-- No duplicate ratings per conversation
+- No duplicate ratings per RideRequest
+- Conditions enforced: accepted status + ride expired
 
 ---
 
@@ -232,7 +230,7 @@
 **Status**: Not started
 
 **Key Features**:
-- [ ] Recurring posts: auto-recreate daily (M-F, e.g.)
+- [ ] Recurring rides: auto-recreate daily (M-F, e.g.)
 - [ ] Web app manifest (install to home screen)
 - [ ] Service worker (basic offline support)
 - [ ] Mobile UI optimizations (Tailwind responsive)
@@ -243,8 +241,8 @@
 - [ ] Performance: page load <3s, Time to Interactive <5s
 
 **Background Jobs**:
-- `RecurringPostCreatorJob` (hourly: find recurring posts with matching day, recreate)
-- `OtpCodeCleanupJob` (hourly: delete expired OTP codes)
+- `RecurringRideJob` (after ride expires: recreate next day if matches recurring_days)
+- `OtpCleanupJob` (hourly: delete expired/used OTP codes)
 
 **Views**:
 - PWA manifest linked in application layout
@@ -253,17 +251,17 @@
 - Error pages
 
 **Testing**:
-- Recurring post recreates daily for selected days
+- Recurring ride recreates daily for selected days
 - PWA installs on iOS/Android
 - Offline page loads (service worker)
 - Mobile layout responsive (Tailwind breakpoints)
 - Performance: lighthouse score >80
 
 **Exit Criteria**:
-- Recurring posts auto-create
+- Recurring rides auto-create (next day if matches recurring_days)
 - Can install as PWA
 - Mobile UI polished
-- All core features working end-to-end
+- All core features working end-to-end (both Flow A & B)
 
 ---
 
@@ -473,16 +471,15 @@ Week 9+:   [Phase 6] Monitoring & Launch
 **Rationale**: Single-server simplicity, zero-downtime deploys, cost-effective
 
 ### Decision 6: Devise vs. has_secure_password
-**Chosen**: Devise 4.9+ (complete authentication framework)
+**Chosen**: has_secure_password (bcrypt) + manual session management
 **Rationale**:
-- Replaces manual has_secure_password implementation
-- Phone-based authentication (non-standard, requires custom configuration)
-- authentication_keys = [:phone] instead of email
-- Provides registerable + rememberable modules for session persistence
-- Uses encrypted_password column instead of password_digest
-- Future-proof for devise-api or mobile token-based authentication
-- Reduces custom auth code; leverages gem conventions
-- Controllers: Users::RegistrationsController, Users::SessionsController override defaults
+- Simpler, fewer dependencies (no Devise complexity at MVP)
+- Phone-based authentication (easier without Devise email assumption)
+- Direct session[:user_id] control
+- Uses password_digest column (Rails standard)
+- Sufficient for MVP MVP scope (no email, no roles, no token auth)
+- Manual SessionsController + UsersController, less configuration
+- Future can add mobile API tokens when needed
 
 ---
 
