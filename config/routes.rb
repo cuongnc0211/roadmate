@@ -6,6 +6,11 @@ Rails.application.routes.draw do
       sessions:      "users/sessions"
     }
 
+  # Profile routes — edit before :id to avoid "edit" matching as ID param
+  get  "profile/edit",  to: "profiles#edit",   as: :edit_profile
+  patch "profile",      to: "profiles#update",  as: :profile
+  get  "profile/:id",   to: "profiles#show",    as: :user_profile
+
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check
 

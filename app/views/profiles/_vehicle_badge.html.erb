@@ -1,0 +1,13 @@
+<% if user.motorbike? %>
+  <span class="inline-flex items-center gap-1 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+    🛵 Xe máy<% if user.available_seats.present? %> · <%= user.available_seats %> ghế<% end %>
+  </span>
+<% elsif user.car? %>
+  <span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+    🚗 Ô tô<% if user.available_seats.present? %> · <%= user.available_seats %> ghế<% end %>
+  </span>
+<% else %>
+  <span class="inline-flex items-center text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+    Không có xe
+  </span>
+<% end %>

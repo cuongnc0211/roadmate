@@ -1,0 +1,93 @@
+<%= form_with model: user, url: profile_path, method: :patch,
+              data: { controller: "vehicle-seats" },
+              html: { enctype: "multipart/form-data" } do |f| %>
+
+  <%# Avatar upload with live preview %>
+  <div class="mb-6 bg-white rounded-xl p-4 border border-gray-200" data-controller="avatar-preview">
+    <p class="text-sm font-medium text-gray-700 mb-3">Ảnh đại diện</p>
+    <div class="flex items-center gap-4">
+      <%# Preview circle — shows current avatar or initials fallback %>
+      <div class="relative w-20 h-20 flex-shrink-0">
+        <% if user.avatar.attached? %>
+          <%= image_tag user.avatar.variant(:thumb),
+                data: { avatar_preview_target: "preview" },
+                class: "w-20 h-20 rounded-full object-cover",
+                alt: user.name %>
+        <% else %>
+          <div data-avatar-preview-target="fallback"
+               class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-2xl font-bold text-green-700">
+            <%= user.name.first&.upcase || "?" %>
+          </div>
+          <img data-avatar-preview-target="preview"
+               class="w-20 h-20 rounded-full object-cover hidden"
+               alt="Avatar preview" />
+        <% end %>
+      </div>
+
+      <div class="flex-1">
+        <%= f.file_field :avatar, accept: "image/*",
+              class: "block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer",
+              data: { avatar_preview_target: "input", action: "change->avatar-preview#show" } %>
+        <p class="mt-1 text-xs text-gray-400">JPG, PNG — tối đa 5MB</p>
+      </div>
+    </div>
+  </div>
+
+  <%# Name %>
+  <div class="mb-4">
+    <%= f.label :name, "Họ và tên", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :name,
+          class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base" %>
+  </div>
+
+  <%# Zalo link %>
+  <div class="mb-4">
+    <%= f.label :zalo_link, "Zalo", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.url_field :zalo_link,
+          placeholder: "https://zalo.me/0912345678",
+          class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base" %>
+    <p class="mt-1 text-xs text-gray-400">Dùng để liên hệ khi ghép chuyến thành công</p>
+  </div>
+
+  <%# Vehicle type — triggers show/hide of plate + seats %>
+  <div class="mb-4">
+    <%= f.label :vehicle_type, "Phương tiện", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.select :vehicle_type,
+          [["Không có xe", "no_vehicle"], ["Xe máy", "motorbike"], ["Ô tô", "car"]],
+          {},
+          class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base bg-white",
+          data: { action: "change->vehicle-seats#toggle", vehicle_seats_target: "vehicleType" } %>
+  </div>
+
+  <%# Vehicle plate — hidden when no_vehicle %>
+  <div class="mb-4" data-vehicle-seats-target="plateField">
+    <%= f.label :vehicle_plate, "Biển số xe", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :vehicle_plate,
+          placeholder: "29A-12345",
+          class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base" %>
+  </div>
+
+  <%# Available seats — hidden when no_vehicle %>
+  <div class="mb-6" data-vehicle-seats-target="seatsField">
+    <%= f.label :available_seats, "Số ghế trống", class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.number_field :available_seats, min: 1, max: 8,
+          class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base" %>
+    <p class="mt-1 text-xs text-gray-400">Số ghế bạn thường có thể chở thêm</p>
+  </div>
+
+  <%# Validation errors %>
+  <% if user.errors.any? %>
+    <div class="mb-4 bg-red-50 border border-red-200 rounded-lg p-4" data-turbo-cache="false">
+      <p class="text-sm font-medium text-red-800 mb-1"><%= user.errors.count %> lỗi cần sửa:</p>
+      <ul class="list-disc list-inside space-y-1">
+        <% user.errors.full_messages.each do |msg| %>
+          <li class="text-sm text-red-700"><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <%= f.submit "Lưu hồ sơ",
+        class: "w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-base cursor-pointer" %>
+
+<% end %>

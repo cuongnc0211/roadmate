@@ -1,0 +1,60 @@
+<% content_for :title, "#{@user.name} — RoadMate" %>
+
+<div class="min-h-screen bg-gray-50 py-8 px-4">
+  <div class="max-w-lg mx-auto">
+
+    <%# Header: Avatar + name + vehicle badge %>
+    <div class="flex items-center gap-4 mb-6">
+      <% if @user.avatar.attached? %>
+        <%= image_tag @user.avatar.variant(:thumb),
+              class: "w-20 h-20 rounded-full object-cover flex-shrink-0",
+              alt: @user.name %>
+      <% else %>
+        <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-2xl font-bold text-green-700 flex-shrink-0">
+          <%= @user.name.first&.upcase || "?" %>
+        </div>
+      <% end %>
+
+      <div>
+        <h1 class="text-xl font-bold text-gray-900"><%= @user.name %></h1>
+        <%= render "vehicle_badge", user: @user %>
+      </div>
+    </div>
+
+    <%# Rating %>
+    <div class="mb-6 p-4 bg-white rounded-xl border border-gray-200">
+      <p class="text-xs text-gray-500 mb-1">Đánh giá</p>
+      <p class="font-semibold text-gray-800"><%= @user.display_rating %></p>
+    </div>
+
+    <%# Zalo link — only on own profile; contact reveal handled in separate ticket %>
+    <% if @user == current_user && @user.zalo_link.present? %>
+      <div class="mb-6 p-4 bg-white rounded-xl border border-gray-200">
+        <p class="text-xs text-gray-500 mb-1">Zalo</p>
+        <%= link_to @user.zalo_link, @user.zalo_link, target: "_blank", rel: "noopener noreferrer",
+              class: "text-green-600 hover:underline text-sm break-all" %>
+      </div>
+    <% end %>
+
+    <%# Ride history — stub until Ride model is implemented %>
+    <div class="mb-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-3">Lịch sử chuyến đi</h2>
+      <p class="text-sm text-gray-400">Chưa có chuyến đi nào.</p>
+    </div>
+
+    <%# Own profile: edit button %>
+    <% if @user == current_user %>
+      <%= link_to "Chỉnh sửa hồ sơ", edit_profile_path,
+            class: "block text-center bg-gray-100 text-gray-700 py-2 px-4 rounded-lg text-sm hover:bg-gray-200 mb-4" %>
+    <% end %>
+
+    <%# Other user: report link (UI only, no backend logic at MVP) %>
+    <% unless @user == current_user %>
+      <p class="text-center">
+        <%= link_to "Báo cáo người dùng", "#",
+              class: "text-xs text-gray-400 hover:text-red-500" %>
+      </p>
+    <% end %>
+
+  </div>
+</div>

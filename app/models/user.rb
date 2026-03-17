@@ -10,12 +10,13 @@ class User < ApplicationRecord
          :registerable,
          :rememberable
 
+  # ==> Active Storage
+  has_one_attached :avatar do |attachable|
+    attachable.variant :thumb, resize_to_limit: [ 400, 400 ]
+  end
+
   # ==> Associations
-  has_many :posts, dependent: :destroy
-  has_many :conversations_initiated, class_name: "Conversation",
-           foreign_key: :initiator_id, dependent: :destroy
-  has_many :conversations_received, class_name: "Conversation",
-           foreign_key: :recipient_id, dependent: :destroy
+  has_many :rides, dependent: :destroy
   has_many :ratings_given,    class_name: "Rating", foreign_key: :rater_id, dependent: :destroy
   has_many :ratings_received, class_name: "Rating", foreign_key: :ratee_id
 
@@ -28,6 +29,15 @@ class User < ApplicationRecord
                     format: { with: /\A\+84\d{9,10}\z/, message: "không hợp lệ (vd: +84912345678)" }
   validates :name,  presence: true, length: { minimum: 2, maximum: 100 }
   validates :password, length: { minimum: 6 }, if: :password_required?
+  validates :zalo_link,
+            format: { with: /\Ahttps:\/\/zalo\.me\/.+\z/, message: "phải có dạng https://zalo.me/..." },
+            allow_blank: true
+  # available_seats required when user has a vehicle (max 8 seats covers largest passenger vans)
+  validates :available_seats,
+            presence: { message: "bắt buộc khi có xe" },
+            numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 8 },
+            if: -> { motorbike? || car? }
+  validate :avatar_content_type_and_size, if: -> { avatar.attached? && avatar.changed? }
 
   # ==> Scopes
   scope :with_rating, -> { where("rating_count >= 3") }
@@ -44,6 +54,12 @@ class User < ApplicationRecord
   end
 
   # ==> Helpers
+
+  # Returns Active Storage avatar variant if attached, nil otherwise
+  def avatar_thumb
+    avatar.attached? ? avatar.variant(:thumb) : nil
+  end
+
   def display_rating
     return "Chưa đủ đánh giá" if rating_count < 3
     "#{avg_rating.round(1)} ★ (#{rating_count})"
@@ -67,5 +83,15 @@ class User < ApplicationRecord
 
   def password_required?
     !persisted? || !password.nil? || !password_confirmation.nil?
+  end
+
+  def avatar_content_type_and_size
+    allowed_types = %w[image/jpeg image/png image/webp]
+    unless allowed_types.include?(avatar.blob.content_type)
+      errors.add(:avatar, "phải là ảnh JPG, PNG hoặc WebP")
+    end
+    if avatar.blob.byte_size > 5.megabytes
+      errors.add(:avatar, "không được vượt quá 5MB")
+    end
   end
 end

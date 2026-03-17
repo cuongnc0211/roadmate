@@ -18,13 +18,13 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def configure_account_update_params
-    devise_parameter_sanitizer.permit(:account_update, keys: [:name, :phone, :avatar_url, :zalo_link,
+    devise_parameter_sanitizer.permit(:account_update, keys: [:name, :phone, :zalo_link,
                                                                :vehicle_type, :vehicle_plate, :available_seats])
   end
 
-  # After sign up, go to root (feed) — not the default edit profile path
+  # After sign up, redirect to profile edit so user completes their profile
   def after_sign_up_path_for(resource)
-    root_path
+    edit_profile_path
   end
 
   def after_inactive_sign_up_path_for(resource)
