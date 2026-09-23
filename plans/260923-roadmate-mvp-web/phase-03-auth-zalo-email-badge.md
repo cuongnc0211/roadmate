@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Auth (Zalo + Email Badge)"
-status: pending
+status: done
 priority: P1
 dependencies: [1, 2]
 ---
@@ -50,11 +50,24 @@ dependencies: [1, 2]
 
 ## Success Criteria
 ### Launch
-- [ ] Đăng nhập email magic link → có session Supabase.
-- [ ] Verify email trường → `sv_verified=true`, badge hiển thị; **chưa verify vẫn đăng/join được** (soft gate).
-- [ ] Whitelist domain email trường hoạt động; token/secret chỉ ở server.
+- [x] Đăng nhập email magic link → có session Supabase. (E2E test qua Mailpit: login → callback PKCE → session; middleware redirect unauth→/login, authed khỏi /login.)
+- [x] Verify email trường → `sv_verified=true`, badge hiển thị; **chưa verify vẫn đăng/join được** (soft gate). (E2E: OTP → badge SV; sv_verified/school_email set qua service role.)
+- [x] Whitelist domain email trường hoạt động; token/secret chỉ ở server. (Test: gmail.com → domain_not_allowed; `x@edu.vn@evil.com` → invalid_email.)
 ### Deferred
-- [ ] (Bản sau) Đăng nhập Zalo tạo/khớp user theo `zalo_id` (synthetic email + Admin API), RLS vẫn chạy với `auth.uid()`.
+- [ ] (Bản sau) Đăng nhập Zalo tạo/khớp user theo `zalo_id` (synthetic email + Admin API), RLS vẫn chạy với `auth.uid()`. — **CHƯA làm (đúng kế hoạch).**
+
+## Completion Notes (Session 2026-09-23)
+- **Auth launch:** email magic link (Supabase native, PKCE) + `middleware.ts` refresh session & bảo vệ route (API tự enforce 401, không redirect). Trigger `handle_new_user` (migration 0002) tự tạo `profiles`+`profile_private` khi signup.
+- **SV badge (soft):** OTP tự sinh (6 số, hash sha-256, TTL 15', hạn 5 lần), gửi email qua `lib/email.ts` (Resend nếu có key, không thì log console ở dev). Xác nhận → set `sv_verified` + `school_email` qua **service role** (client không ghi được). Bảng `sv_verifications` server-only.
+- **Naming lệch nhẹ so với plan:** routes là `app/api/auth/verify-email/{start,confirm}` (tách 2 bước) thay vì 1 route; guards ở `lib/auth/guards.ts` + helper `lib/auth/sv.ts`.
+- **Code review (subagent) — findings đã fix + verify hành vi:**
+  - **H1 (HIGH):** OTP brute-force/email-bomb (không rate limit + cap theo từng row). Fix: rate limit 3 lần/15' theo user, invalidate OTP cũ mỗi lần start, cap tích luỹ. Test: gửi lần 4 → 429.
+  - **M1:** tăng `attempts` không atomic. Fix: update có điều kiện `attempts < MAX`. Test: 5 sai → 400, lần 6 → 429.
+  - **M2:** email lỏng (`includes('@')`, lấy segment [1]). Fix: regex 1 `@`, lấy domain sau `@` cuối. Test: `x@edu.vn@evil.com` → invalid.
+  - **L1:** `safeNext` chặn `//`, `/\`. **L2:** xoá row OTP nếu gửi email lỗi.
+- **Bug tự fix:** hydration mismatch ở `ThemeToggle` (aria-label phụ thuộc theme) → nhãn ổn định tới khi mounted.
+- **Nâng cấp phụ thuộc:** `@supabase/ssr` 0.5.2 → 0.12.7 để type `Database` (generated) flow đúng vào query (trước đó bị `never`).
+- **Còn lại cho prod (Phase 07):** cắm `RESEND_API_KEY` để gửi OTP thật; cân nhắc rate-limit theo IP/email nếu lạm dụng.
 
 ## Risk Assessment
 - Launch đơn giản (Supabase email native) → rủi ro thấp. Rủi ro cao dời sang khi thêm Zalo (custom flow) — đã tách khỏi đường tới hạn launch.

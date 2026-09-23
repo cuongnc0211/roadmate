@@ -10,12 +10,20 @@ export function ThemeToggle() {
 
   React.useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === "dark";
+  const isDark = mounted && resolvedTheme === "dark";
 
   return (
     <button
       type="button"
-      aria-label={isDark ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}
+      // Stable label until mounted to avoid an SSR/client hydration mismatch
+      // (resolvedTheme is only known on the client).
+      aria-label={
+        mounted
+          ? isDark
+            ? "Chuyển sang giao diện sáng"
+            : "Chuyển sang giao diện tối"
+          : "Chuyển giao diện sáng/tối"
+      }
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className="grid size-9 place-items-center rounded-full bg-surface text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
     >

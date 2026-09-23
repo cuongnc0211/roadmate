@@ -1,12 +1,28 @@
-import { PageStub } from "@/components/shell/page-stub";
+import { ProfilePanel } from "@/components/profile/profile-panel";
+import { requireUser } from "@/lib/auth/guards";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Hồ sơ" };
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("name, sv_verified")
+    .eq("id", user.id)
+    .maybeSingle();
+
   return (
-    <PageStub
-      title="Hồ sơ"
-      note="Badge SV (xác minh email trường), SĐT tùy chọn, ưu tiên nữ-với-nữ, rating — Phase 03 & 06."
-    />
+    <section>
+      <h1 className="mb-4 text-[22px] font-extrabold tracking-tight text-ink">
+        Hồ sơ
+      </h1>
+      <ProfilePanel
+        name={profile?.name ?? "Người dùng"}
+        email={user.email ?? ""}
+        svVerified={profile?.sv_verified ?? false}
+      />
+    </section>
   );
 }
