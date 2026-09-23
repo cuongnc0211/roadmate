@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="RoadMate">
+  <rect width="512" height="512" rx="112" fill="#0E5C4A"/>
+  <!-- Route motif: origin dot → dashed line → destination ring -->
+  <g transform="translate(256,256)">
+    <circle cx="-120" cy="0" r="34" fill="#FFFFFF"/>
+    <line x1="-78" y1="0" x2="78" y2="0" stroke="#E8952B" stroke-width="18" stroke-linecap="round" stroke-dasharray="4 34"/>
+    <circle cx="120" cy="0" r="34" fill="none" stroke="#E8952B" stroke-width="18"/>
+  </g>
+</svg>

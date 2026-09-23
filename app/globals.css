@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/* Design tokens — ported 1:1 from prototype/roadmate-prototype.html   */
+/* Palette: pine/teal (primary) + marigold (accent), Be Vietnam Pro.   */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --ground: #f7f5f1;
+  --surface: #ffffff;
+  --surface-2: #f1eee8;
+  --ink: #17211f;
+  --ink-2: #4c5a55;
+  --ink-3: #7c8983;
+  --border: #e3dfd7;
+  --border-2: #d3cdc1;
+  --primary: #0e5c4a;
+  --primary-ink: #ffffff;
+  --primary-weak: #e4f0eb;
+  --primary-2: #0b7a5e;
+  --accent: #e8952b;
+  --accent-weak: #fbecd6;
+  --success: #2e7d5b;
+  --warning: #c77d1a;
+  --danger: #c0453b;
+  --shadow: 0 1px 2px rgba(23, 33, 31, 0.06), 0 8px 24px rgba(23, 33, 31, 0.06);
+  --shadow-lg: 0 12px 40px rgba(23, 33, 31, 0.16);
+  --r: 14px;
+  --r-sm: 10px;
+  --r-lg: 22px;
+  --font: var(--font-be-vietnam), system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+}
+
+/* System dark (unless the user forced light) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0e1513;
+    --surface: #182220;
+    --surface-2: #212d2a;
+    --ink: #eaf0ed;
+    --ink-2: #aebbb6;
+    --ink-3: #7e8c87;
+    --border: #2a3733;
+    --border-2: #374843;
+    --primary: #3fa98c;
+    --primary-ink: #06231c;
+    --primary-weak: #183029;
+    --primary-2: #4fc0a1;
+    --accent: #f0a94a;
+    --accent-weak: #33291a;
+    --success: #4fb98a;
+    --warning: #e0a346;
+    --danger: #e06b60;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Explicitly forced dark */
+:root[data-theme="dark"] {
+  --ground: #0e1513;
+  --surface: #182220;
+  --surface-2: #212d2a;
+  --ink: #eaf0ed;
+  --ink-2: #aebbb6;
+  --ink-3: #7e8c87;
+  --border: #2a3733;
+  --border-2: #374843;
+  --primary: #3fa98c;
+  --primary-ink: #06231c;
+  --primary-weak: #183029;
+  --primary-2: #4fc0a1;
+  --accent: #f0a94a;
+  --accent-weak: #33291a;
+  --success: #4fb98a;
+  --warning: #e0a346;
+  --danger: #e06b60;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ------------------------------------------------------------------ */
+/* Expose tokens to Tailwind utilities (bg-surface, text-ink-2, ...)   */
+/* ------------------------------------------------------------------ */
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-border: var(--border);
+  --color-border-2: var(--border-2);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-weak: var(--primary-weak);
+  --color-primary-2: var(--primary-2);
+  --color-accent: var(--accent);
+  --color-accent-weak: var(--accent-weak);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --radius-DEFAULT: var(--r);
+  --radius-sm: var(--r-sm);
+  --radius-lg: var(--r-lg);
+
+  --font-sans: var(--font);
+
+  --shadow-card: var(--shadow);
+  --shadow-elevated: var(--shadow-lg);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    font-family: var(--font);
+    background: var(--ground);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+}

@@ -1,0 +1,766 @@
+<title>RoadMate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{
+    --ground:#F7F5F1; --surface:#FFFFFF; --surface-2:#F1EEE8;
+    --ink:#17211F; --ink-2:#4C5A55; --ink-3:#7C8983;
+    --border:#E3DFD7; --border-2:#D3CDC1;
+    --primary:#0E5C4A; --primary-ink:#FFFFFF; --primary-weak:#E4F0EB; --primary-2:#0B7A5E;
+    --accent:#E8952B; --accent-weak:#FBECD6;
+    --success:#2E7D5B; --warning:#C77D1A; --danger:#C0453B;
+    --shadow:0 1px 2px rgba(23,33,31,.06),0 8px 24px rgba(23,33,31,.06);
+    --shadow-lg:0 12px 40px rgba(23,33,31,.16);
+    --r:14px; --r-sm:10px; --r-lg:22px;
+    --font:'Be Vietnam Pro',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E1513; --surface:#182220; --surface-2:#212D2A;
+      --ink:#EAF0ED; --ink-2:#AEBBB6; --ink-3:#7E8C87;
+      --border:#2A3733; --border-2:#374843;
+      --primary:#3FA98C; --primary-ink:#06231C; --primary-weak:#183029; --primary-2:#4FC0A1;
+      --accent:#F0A94A; --accent-weak:#33291A;
+      --success:#4FB98A; --warning:#E0A346; --danger:#E06B60;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+      --shadow-lg:0 12px 40px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E1513; --surface:#182220; --surface-2:#212D2A;
+    --ink:#EAF0ED; --ink-2:#AEBBB6; --ink-3:#7E8C87;
+    --border:#2A3733; --border-2:#374843;
+    --primary:#3FA98C; --primary-ink:#06231C; --primary-weak:#183029; --primary-2:#4FC0A1;
+    --accent:#F0A94A; --accent-weak:#33291A;
+    --success:#4FB98A; --warning:#E0A346; --danger:#E06B60;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+    --shadow-lg:0 12px 40px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--font); background:var(--ground); color:var(--ink);
+    -webkit-font-smoothing:antialiased; line-height:1.45;
+    display:flex; justify-content:center; align-items:center;
+    min-height:100vh; padding:0;
+  }
+  @media (min-width:520px){ body{padding:24px} }
+
+  /* phone frame */
+  .app{
+    position:relative; width:100%; max-width:430px;
+    background:var(--ground); display:flex; flex-direction:column;
+    height:100vh; overflow:hidden;
+  }
+  @media (min-width:520px){
+    .app{ height:min(900px,calc(100vh - 48px)); border-radius:34px;
+      box-shadow:var(--shadow-lg); border:1px solid var(--border); overflow:hidden; }
+  }
+
+  /* header */
+  .bar{
+    flex:0 0 auto; display:flex; align-items:center; gap:10px;
+    padding:14px 16px 12px; background:var(--surface);
+    border-bottom:1px solid var(--border); position:relative; z-index:5;
+  }
+  .brand{display:flex; align-items:center; gap:9px; font-weight:800; font-size:19px; letter-spacing:-.02em}
+  .brand .mark{width:26px;height:26px;flex:0 0 auto}
+  .bar .spacer{flex:1}
+  .iconbtn{
+    width:38px;height:38px;border-radius:11px;border:1px solid var(--border);
+    background:var(--surface); color:var(--ink-2); display:grid;place-items:center;
+    cursor:pointer; transition:.15s;
+  }
+  .iconbtn:hover{background:var(--surface-2); color:var(--ink)}
+  .demo-pill{font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-weak);
+    padding:3px 8px;border-radius:999px;letter-spacing:.02em}
+
+  /* screens */
+  .screens{flex:1 1 auto; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch}
+  .screen{display:none; padding:16px 16px 28px; animation:fade .25s ease both}
+  .screen.active{display:block}
+  @keyframes fade{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){ .screen,.sheet-in{animation:none!important} }
+
+  h1.title{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:2px 0 2px;text-wrap:balance}
+  .sub{color:var(--ink-2);font-size:13.5px;margin:0 0 16px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:22px 0 10px}
+  .eyebrow:first-child{margin-top:4px}
+
+  /* segmented + chips */
+  .seg{display:flex;background:var(--surface-2);border-radius:12px;padding:4px;gap:4px;margin-bottom:12px}
+  .seg button{flex:1;border:0;background:transparent;color:var(--ink-2);font-family:var(--font);
+    font-weight:600;font-size:13px;padding:8px 6px;border-radius:9px;cursor:pointer;transition:.15s}
+  .seg button[aria-selected="true"]{background:var(--surface);color:var(--primary);box-shadow:var(--shadow)}
+  .odbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:2px 12px;margin-bottom:12px}
+  .odrow{display:flex;align-items:center;gap:10px;padding:9px 0}
+  .odrow+.odrow{border-top:1px solid var(--border)}
+  .odlab{width:44px;font-size:12.5px;font-weight:700;color:var(--ink-2);display:flex;align-items:center;gap:7px;flex:0 0 auto}
+  .odrow select{border:0;background:transparent;padding:5px 0;font-weight:600;box-shadow:none;color:var(--ink)}
+  .odrow select:focus{box-shadow:none;outline:none}
+  .advtoggle{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:none;border:0;
+    color:var(--primary);font-family:var(--font);font-weight:600;font-size:13px;cursor:pointer;padding:4px 6px 12px}
+  .advtoggle svg{transition:.2s}
+  .advtoggle[aria-expanded="true"] svg{transform:rotate(180deg)}
+  .advpanel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:2px 14px 14px;margin-bottom:12px}
+  .advpanel .f:first-child{margin-top:10px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .chip{border:1px solid var(--border-2);background:var(--surface);color:var(--ink-2);
+    font-family:var(--font);font-weight:600;font-size:12.5px;padding:7px 12px;border-radius:999px;cursor:pointer;transition:.15s;display:inline-flex;gap:6px;align-items:center}
+  .chip[aria-pressed="true"]{background:var(--primary);color:var(--primary-ink);border-color:var(--primary)}
+  .chip.accent[aria-pressed="true"]{background:var(--accent);color:#3a2405;border-color:var(--accent)}
+
+  /* trip card */
+  .list{display:flex;flex-direction:column;gap:12px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+    box-shadow:var(--shadow);overflow:hidden}
+  .trip{cursor:pointer;transition:.15s;border-left:3px solid transparent}
+  .trip:hover{transform:translateY(-1px);border-color:var(--border-2)}
+  .trip.t-offer{border-left-color:var(--primary)}
+  .trip.t-need{border-left-color:var(--accent)}
+  .trip-top{display:flex;align-items:flex-start;gap:10px;padding:13px 14px 4px}
+  .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;letter-spacing:.01em}
+  .b-offer{background:var(--primary-weak);color:var(--primary)}
+  .b-need{background:var(--accent-weak);color:var(--warning)}
+  .b-women{background:#F6E6F0;color:#9B2D6E}
+  :root[data-theme="dark"] .b-women,:root:not([data-theme="light"]) .b-women{background:#3A2130;color:#F0A6CE}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .b-women{background:#3A2130;color:#F0A6CE}}
+  .trip-time{margin-left:auto;text-align:right;font-weight:700;font-size:13px;color:var(--ink)}
+  .trip-time small{display:block;color:var(--ink-3);font-weight:500;font-size:11px}
+
+  /* route line motif */
+  .route{display:grid;grid-template-columns:18px 1fr;gap:2px 10px;padding:8px 14px 12px}
+  .rail{display:flex;flex-direction:column;align-items:center;padding-top:5px}
+  .dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+  .dot.o{background:var(--primary)}
+  .dot.d{background:transparent;border:2.5px solid var(--accent)}
+  .rline{width:2px;flex:1;background:repeating-linear-gradient(var(--border-2) 0 4px,transparent 4px 8px);margin:3px 0;min-height:16px}
+  .pt{font-size:14px;font-weight:600;line-height:1.3}
+  .pt small{display:block;color:var(--ink-3);font-weight:500;font-size:11.5px}
+  .pt.dest{margin-top:6px}
+
+  .trip-foot{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface-2)}
+  .who{display:flex;align-items:center;gap:8px;min-width:0}
+  .ava{width:30px;height:30px;border-radius:50%;background:var(--primary);color:var(--primary-ink);
+    display:grid;place-items:center;font-weight:700;font-size:13px;flex:0 0 auto}
+  .who-name{font-weight:600;font-size:13px;display:flex;align-items:center;gap:5px;min-width:0}
+  .who-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rating{color:var(--ink-2);font-size:12px;font-weight:600;display:flex;align-items:center;gap:3px}
+  .sv{display:inline-flex;align-items:center;gap:3px;background:var(--primary-weak);color:var(--primary);
+    font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px}
+  .price{margin-left:auto;text-align:right}
+  .price b{font-size:15px;font-variant-numeric:tabular-nums}
+  .price small{display:block;color:var(--ink-3);font-size:10.5px}
+  .seats{font-size:12px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:4px}
+
+  /* detail */
+  .back{display:inline-flex;align-items:center;gap:6px;color:var(--ink-2);font-weight:600;font-size:14px;
+    background:none;border:0;font-family:var(--font);cursor:pointer;padding:4px 0;margin-bottom:6px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px}
+  .kv:last-child{border-bottom:0}
+  .kv .k{color:var(--ink-2)}
+  .kv .v{font-weight:600;text-align:right}
+  .note{background:var(--surface-2);border-radius:var(--r-sm);padding:11px 13px;font-size:13.5px;color:var(--ink-2);margin-top:6px}
+
+  /* forms */
+  label.f{display:block;font-weight:600;font-size:13px;margin:14px 0 7px}
+  input,select,textarea{width:100%;font-family:var(--font);font-size:14.5px;color:var(--ink);
+    background:var(--surface);border:1px solid var(--border-2);border-radius:var(--r-sm);padding:11px 12px;transition:.15s}
+  textarea{resize:vertical;min-height:70px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-weak)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .switch{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);margin-top:14px}
+  .switch .lb{font-weight:600;font-size:14px}
+  .switch .lb small{display:block;color:var(--ink-3);font-weight:500;font-size:12px}
+  .tg{width:46px;height:27px;border-radius:999px;background:var(--border-2);position:relative;cursor:pointer;flex:0 0 auto;transition:.2s;border:0}
+  .tg::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .tg[aria-checked="true"]{background:var(--primary)}
+  .tg[aria-checked="true"]::after{left:22px}
+
+  /* buttons */
+  .btn{width:100%;font-family:var(--font);font-weight:700;font-size:15px;padding:14px;border-radius:var(--r);
+    border:0;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn.primary{background:var(--primary);color:var(--primary-ink)}
+  .btn.primary:hover{background:var(--primary-2)}
+  .btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--border-2)}
+  .btn.ghost:hover{background:var(--surface-2)}
+  .btn.danger{background:var(--surface);color:var(--danger);border:1px solid var(--border-2)}
+  .btn.sm{padding:9px 14px;font-size:13px;width:auto;border-radius:10px}
+  .btn.block{margin-top:8px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* request rows */
+  .req{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .req:last-child{border-bottom:0}
+  .req .acts{margin-left:auto;display:flex;gap:7px}
+  .status{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px}
+  .st-pending{background:var(--accent-weak);color:var(--warning)}
+  .st-accepted{background:var(--primary-weak);color:var(--primary)}
+  .st-declined{background:var(--surface-2);color:var(--ink-3)}
+  .contact{margin-top:8px;background:var(--primary-weak);border-radius:var(--r-sm);padding:10px 12px;font-size:13.5px;display:flex;align-items:center;gap:8px;color:var(--primary);font-weight:600}
+
+  /* notifications */
+  .notif{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--border)}
+  .notif:last-child{border-bottom:0}
+  .ndot{width:9px;height:9px;border-radius:50%;background:var(--accent);margin-top:6px;flex:0 0 auto}
+  .notif.read .ndot{background:var(--border-2)}
+  .ntext{font-size:13.5px}
+  .ntext b{font-weight:700}
+  .ntime{color:var(--ink-3);font-size:11.5px;margin-top:2px}
+
+  /* profile */
+  .phead{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+  .phead .ava{width:60px;height:60px;font-size:24px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:13px;text-align:center}
+  .stat b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+  .stat small{color:var(--ink-3);font-size:11.5px}
+
+  /* login */
+  .login{display:flex;flex-direction:column;justify-content:center;min-height:100%;padding:30px 22px}
+  .login .hero-mark{width:66px;height:66px;margin-bottom:20px}
+  .login h1{font-size:30px;font-weight:800;letter-spacing:-.03em;margin:0 0 8px;text-wrap:balance}
+  .login p{color:var(--ink-2);font-size:15px;margin:0 0 30px;max-width:30ch}
+  .zalo-btn{background:#0068FF;color:#fff}
+  .zalo-btn:hover{background:#0057d6}
+  .step-note{font-size:12.5px;color:var(--ink-3);text-align:center;margin-top:16px}
+
+  /* tabbar */
+  .tabbar{flex:0 0 auto;display:flex;background:var(--surface);border-top:1px solid var(--border);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .tab{flex:1;border:0;background:none;font-family:var(--font);cursor:pointer;color:var(--ink-3);
+    display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;font-size:10.5px;font-weight:600;transition:.15s;position:relative}
+  .tab[aria-current="true"]{color:var(--primary)}
+  .tab .tbadge{position:absolute;top:2px;right:calc(50% - 20px);background:var(--danger);color:#fff;
+    font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:999px;display:grid;place-items:center;padding:0 3px}
+
+  /* toast + sheet */
+  .toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:var(--ground);font-size:13.5px;font-weight:600;padding:11px 18px;border-radius:999px;
+    box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:90%;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .overlay{position:absolute;inset:0;background:rgba(10,15,13,.5);opacity:0;pointer-events:none;transition:.2s;z-index:40}
+  .overlay.show{opacity:1;pointer-events:auto}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:.28s cubic-bezier(.2,.8,.2,1);z-index:41;box-shadow:var(--shadow-lg)}
+  .sheet.show{transform:translateY(0)}
+  .sheet h3{margin:0 0 4px;font-size:18px;font-weight:800}
+  .sheet .grip{width:38px;height:4px;border-radius:999px;background:var(--border-2);margin:0 auto 14px}
+  .stars{display:flex;gap:8px;justify-content:center;margin:14px 0}
+  .stars button{background:none;border:0;cursor:pointer;font-size:34px;line-height:1;color:var(--border-2);transition:.1s;padding:0}
+  .stars button.on{color:var(--accent)}
+  .empty{text-align:center;color:var(--ink-3);padding:40px 20px;font-size:14px}
+  .empty svg{opacity:.5;margin-bottom:10px}
+</style>
+
+<div class="app" id="app">
+  <div class="bar" id="topbar">
+    <span class="brand"><svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="3" fill="var(--primary)"/><circle cx="18" cy="18" r="3" fill="none" stroke="var(--accent)" stroke-width="2.5"/><path d="M6 9v3a3 3 0 0 0 3 3h3" stroke="var(--border-2)" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 3"/></svg>RoadMate</span>
+    <span class="spacer"></span>
+    <span class="demo-pill">DEMO</span>
+    <button class="iconbtn" id="themeBtn" aria-label="Đổi giao diện sáng/tối" title="Sáng/Tối"></button>
+  </div>
+
+  <div class="screens" id="screens">
+    <!-- screens injected -->
+  </div>
+
+  <nav class="tabbar" id="tabbar">
+    <button class="tab" data-tab="board" aria-current="true">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>Bảng tin</button>
+    <button class="tab" data-tab="create">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Đăng chuyến</button>
+    <button class="tab" data-tab="mine">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6 17l1.5-5.5A2 2 0 0 1 9.4 10h5.2a2 2 0 0 1 1.9 1.5L18 17M7 17v2M17 17v2"/><circle cx="8" cy="14.5" r=".6"/><circle cx="16" cy="14.5" r=".6"/></svg>Chuyến của tôi</button>
+    <button class="tab" data-tab="notifs">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Thông báo<span class="tbadge" id="tbadge">2</span></button>
+    <button class="tab" data-tab="profile">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>Hồ sơ</button>
+  </nav>
+
+  <div class="overlay" id="overlay"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+"use strict";
+const K='roadmate_proto_v2';
+const PTS_HL=["KTX ĐH Quốc Gia","KTX Học viện Tài chính","KTX ĐH FPT","F-Ville (FPT Software)","Toà nhà Viettel Hoà Lạc","Cổng CNC Hoà Lạc"];
+const PTS_HN=["Big C Thăng Long","Cầu Giấy","Bến xe Mỹ Đình","Kim Mã","ĐH Bách Khoa","Hồ Gươm"];
+
+function seed(){
+  return {
+    user:{name:"Cường",gender:"male",sv:true,rating:4.8,trips:12,phone:"0987 654 321",womenPref:false},
+    filter:{from:"any",to:"any",fromNode:"any",toNode:"any",type:"all",women:false,day:"all",timeWin:"all"},
+    trips:[
+      {id:"t1",dir:"HL_HN",type:"offer",from:"F-Ville (FPT Software)",to:"Cầu Giấy",day:"Thứ 6, 06/09",time:"Chiều 17:00",seats:3,left:2,price:40,women:false,mine:false,
+        by:{name:"Minh Anh",gender:"female",sv:true,rating:4.9,phone:"0912 345 678"},note:"Đi ô tô 5 chỗ, có cốp để đồ. Đón đúng giờ nhé.",pickupNote:"Đón ở sảnh toà F-Ville",req:null},
+      {id:"t2",dir:"HL_HN",type:"need",from:"KTX ĐH Quốc Gia",to:"Big C Thăng Long",day:"Thứ 6, 06/09",time:"Chiều 16:30",seats:2,left:2,price:60,women:false,mine:false,
+        by:{name:"Tuấn",gender:"male",sv:true,rating:4.7,phone:"0900 111 222"},note:"Cần thêm 2 bạn ghép taxi 7 chỗ cho rẻ.",req:"pending"},
+      {id:"t3",dir:"HN_HL",type:"offer",from:"Kim Mã",to:"Toà nhà Viettel Hoà Lạc",day:"CN, 08/09",time:"Tối 19:30",seats:2,left:1,price:45,women:true,mine:false,
+        by:{name:"Thu Hà",gender:"female",sv:true,rating:5.0,phone:"0933 222 111"},note:"Chỉ nhận bạn nữ. Xe sạch sẽ, đi nhẹ nhàng.",pickupNote:"Đón ở cổng chính Kim Mã",req:null},
+      {id:"t4",dir:"HL_HN",type:"need",from:"KTX ĐH FPT",to:"Bến xe Mỹ Đình",day:"Thứ 7, 07/09",time:"Sáng 08:00",seats:3,left:3,price:55,women:false,mine:false,
+        by:{name:"Đức",gender:"male",sv:false,rating:4.5,phone:"0977 888 999"},note:"Ai đi sáng thứ 7 ghép cùng nha.",req:null},
+      {id:"t5",dir:"HN_HL",type:"need",from:"Bến xe Mỹ Đình",to:"KTX Học viện Tài chính",day:"CN, 08/09",time:"Chiều 18:00",seats:1,left:1,price:65,women:false,mine:false,
+        by:{name:"Lan",gender:"female",sv:true,rating:4.8,phone:"0944 555 666"},note:"Cần 1 người ghép về cho đỡ tốn.",req:null},
+      {id:"t6",dir:"HL_HN",type:"offer",from:"Toà nhà Viettel Hoà Lạc",to:"ĐH Bách Khoa",day:"Thứ 6, 06/09",time:"Chiều 17:30",seats:2,left:2,price:50,women:false,mine:false,
+        by:{name:"Hoàng",gender:"male",sv:true,rating:4.6,phone:"0966 777 888"},note:"Xe điện VF8, êm và mát.",req:null},
+      {id:"m1",dir:"HL_HN",type:"offer",from:"F-Ville (FPT Software)",to:"Cầu Giấy",day:"Thứ 6, 06/09",time:"Chiều 18:00",seats:3,left:2,price:40,women:false,mine:true,
+        by:{name:"Cường",gender:"male",sv:true,rating:4.8,phone:"0987 654 321"},note:"Xe 5 chỗ, tan làm đón ở sảnh F-Ville.",
+        reqs:[{name:"Ngọc",gender:"female",sv:true,rating:4.9,phone:"0955 123 456",status:"pending"},
+              {name:"Bình",gender:"male",sv:true,rating:4.4,phone:"0922 654 321",status:"pending"}]}
+    ],
+    notifs:[
+      {id:"n1",html:"<b>Ngọc</b> đã xin tham gia chuyến F-Ville → Cầu Giấy của bạn",time:"5 phút trước",read:false},
+      {id:"n2",html:"<b>Bình</b> đã xin tham gia chuyến F-Ville → Cầu Giấy của bạn",time:"22 phút trước",read:false},
+      {id:"n3",html:"Yêu cầu tham gia chuyến của <b>Tuấn</b> đang chờ duyệt",time:"1 giờ trước",read:true}
+    ],
+    loggedIn:true
+  };
+}
+
+let S;
+try{ const raw=localStorage.getItem(K); S=raw?JSON.parse(raw):seed(); }catch(e){ S=seed(); }
+function save(){ try{ localStorage.setItem(K,JSON.stringify(S)); }catch(e){} }
+S.filter=Object.assign({from:"any",to:"any",fromNode:"any",toNode:"any",type:"all",women:false,day:"all",timeWin:"all"}, S.filter||{});
+(function(f){const z=v=>v==="any"||v==="zone:HL"||v==="zone:HN";
+  if(!z(f.from)){f.fromNode=f.from;f.from="any";} if(!z(f.to)){f.toNode=f.to;f.to="any";}})(S.filter);
+save();
+
+const $=(s,r=document)=>r.querySelector(s);
+const screens=$("#screens");
+let current="board";
+let advOpen=false;
+const dirLabel=d=> d==="HL_HN"?"Hoà Lạc → Hà Nội":"Hà Nội → Hoà Lạc";
+const sideOf=(pt)=> PTS_HL.includes(pt)?"Hoà Lạc":"Hà Nội";
+const initials=n=> n.trim().split(/\s+/).slice(-1)[0][0].toUpperCase();
+const money=v=> v.toLocaleString("vi-VN")+"k";
+function zoneOptions(sel){
+  return `<option value="any" ${sel==='any'?'selected':''}>Bất kỳ</option>`
+    +`<option value="zone:HL" ${sel==='zone:HL'?'selected':''}>Hoà Lạc</option>`
+    +`<option value="zone:HN" ${sel==='zone:HN'?'selected':''}>Hà Nội</option>`;
+}
+function nodeOptions(sel){
+  const optP=arr=>arr.map(p=>`<option ${p===sel?'selected':''}>${p}</option>`).join("");
+  return `<option value="any" ${sel==='any'?'selected':''}>Bất kỳ</option>`
+    +`<optgroup label="Hoà Lạc">${optP(PTS_HL)}</optgroup>`
+    +`<optgroup label="Hà Nội">${optP(PTS_HN)}</optgroup>`;
+}
+function tripNodeOptions(sel){
+  const optP=arr=>arr.map(p=>`<option ${p===sel?'selected':''}>${p}</option>`).join("");
+  return `<optgroup label="Hoà Lạc">${optP(PTS_HL)}</optgroup><optgroup label="Hà Nội">${optP(PTS_HN)}</optgroup>`;
+}
+function ptMatch(pt,fv){
+  if(fv==="any") return true;
+  if(fv==="zone:HL") return sideOf(pt)==="Hoà Lạc";
+  if(fv==="zone:HN") return sideOf(pt)==="Hà Nội";
+  return pt===fv;
+}
+
+/* ---------- render dispatch ---------- */
+function render(){
+  if(!S.loggedIn){ screens.innerHTML=viewLogin(); $("#tabbar").style.display="none"; $("#topbar").style.visibility="hidden"; return; }
+  $("#tabbar").style.display="flex"; $("#topbar").style.visibility="visible";
+  const v={board:viewBoard,create:viewCreate,mine:viewMine,notifs:viewNotifs,profile:viewProfile}[current];
+  screens.innerHTML=`<div class="screen active">${v()}</div>`;
+  screens.scrollTop=0;
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-current", t.dataset.tab===current));
+  const unread=S.notifs.filter(n=>!n.read).length;
+  const tb=$("#tbadge"); tb.textContent=unread; tb.style.display=unread?"grid":"none";
+  bind();
+}
+
+/* ---------- LOGIN ---------- */
+function viewLogin(){
+  return `<div class="login">
+    <svg class="hero-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="3.2" fill="var(--primary)"/><circle cx="18" cy="18" r="3.2" fill="none" stroke="var(--accent)" stroke-width="2.5"/><path d="M6 9.5v2.5a3 3 0 0 0 3 3h2.5" stroke="var(--border-2)" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 3.2"/></svg>
+    <h1>Đi chung, tiết kiệm hơn.</h1>
+    <p>Ghép chuyến taxi & đi chung xe tuyến Hoà Lạc ↔ Hà Nội cùng sinh viên và người đi làm quanh bạn.</p>
+    <button class="btn zalo-btn" data-act="login-zalo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.5 2 2 5.8 2 10.5c0 2.6 1.4 4.9 3.6 6.4-.1.9-.5 2.2-1.4 3.4 1.7-.3 3.3-1 4.4-1.7 1 .3 2.2.4 3.4.4 5.5 0 10-3.8 10-8.5S17.5 2 12 2z"/></svg>
+      Đăng nhập bằng Zalo
+    </button>
+    <div class="step-note">Một chạm, không cần mật khẩu · <a href="#" data-act="skip-login" style="color:var(--primary)">Xem thử trước</a></div>
+  </div>`;
+}
+
+/* ---------- BOARD ---------- */
+function viewBoard(){
+  const f=S.filter;
+  let items=S.trips.filter(t=>!t.mine);
+  items=items.filter(t=>{
+    const fo=f.fromNode!=="any"?t.from===f.fromNode:ptMatch(t.from,f.from);
+    const to=f.toNode!=="any"?t.to===f.toNode:ptMatch(t.to,f.to);
+    return fo&&to;
+  });
+  if(f.type!=="all") items=items.filter(t=>t.type===f.type);
+  if(f.women) items=items.filter(t=>t.women);
+  if(f.day!=="all") items=items.filter(t=>t.day===f.day);
+  if(f.timeWin!=="all") items=items.filter(t=>t.time.startsWith(f.timeWin));
+  const days=[...new Set(S.trips.filter(t=>!t.mine).map(t=>t.day))];
+  const wins=["Sáng","Trưa","Chiều","Tối"];
+  const advCount=(f.type!=="all"?1:0)+(f.women?1:0)+(f.day!=="all"?1:0)+(f.timeWin!=="all"?1:0)+(f.fromNode!=="any"?1:0)+(f.toNode!=="any"?1:0);
+  const cards=items.length?items.map(tripCard).join(""):emptyState("Chưa có chuyến nào khớp","Thử nới điểm đi/đến hoặc bỏ bớt bộ lọc.");
+  return `
+    <h1 class="title">Bảng tin chuyến đi</h1>
+    <p class="sub">${items.length} chuyến sắp tới · Hoà Lạc ↔ Hà Nội</p>
+    <div class="odbox">
+      <div class="odrow"><span class="odlab"><span class="dot o"></span>Từ</span><select id="fFrom">${zoneOptions(f.from)}</select></div>
+      <div class="odrow"><span class="odlab"><span class="dot d"></span>Đến</span><select id="fTo">${zoneOptions(f.to)}</select></div>
+    </div>
+    <button class="advtoggle" id="advBtn" aria-expanded="${advOpen}">Bộ lọc nâng cao${advCount?` · ${advCount}`:''} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+    <div class="advpanel" ${advOpen?'':'hidden'}>
+      <label class="f">Ngày</label>
+      <select id="fDay"><option value="all" ${f.day==='all'?'selected':''}>Tất cả ngày</option>${days.map(d=>`<option ${f.day===d?'selected':''}>${d}</option>`).join("")}</select>
+      <label class="f">Khung giờ</label>
+      <div class="chips"><button class="chip" data-tw="all" aria-pressed="${f.timeWin==='all'}">Tất cả</button>${wins.map(w=>`<button class="chip" data-tw="${w}" aria-pressed="${f.timeWin===w}">${w}</button>`).join("")}</div>
+      <label class="f">Loại chuyến</label>
+      <div class="chips">
+        <button class="chip" data-type="all" aria-pressed="${f.type==='all'}">Tất cả</button>
+        <button class="chip" data-type="offer" aria-pressed="${f.type==='offer'}">Có ghế trống</button>
+        <button class="chip" data-type="need" aria-pressed="${f.type==='need'}">Tìm người ghép</button>
+        <button class="chip accent" data-women aria-pressed="${f.women}">Nữ với nữ</button>
+      </div>
+      <label class="f">Địa chỉ chi tiết</label>
+      <div class="odbox" style="margin-bottom:2px">
+        <div class="odrow"><span class="odlab"><span class="dot o"></span>Từ</span><select id="fFromNode">${nodeOptions(f.fromNode)}</select></div>
+        <div class="odrow"><span class="odlab"><span class="dot d"></span>Đến</span><select id="fToNode">${nodeOptions(f.toNode)}</select></div>
+      </div>
+    </div>
+    <div class="list">${cards}</div>`;
+}
+function tripCard(t){
+  const women= t.women?`<span class="badge b-women">Nữ với nữ</span>`:"";
+  const typeb= t.type==="offer"?`<span class="badge b-offer">Có ghế trống</span>`:`<span class="badge b-need">Tìm người ghép</span>`;
+  return `<article class="card trip ${t.type==='offer'?'t-offer':'t-need'}" data-trip="${t.id}">
+    <div class="trip-top">${typeb}${women}<div class="trip-time">${t.time}<small>${t.day}</small></div></div>
+    <div class="route">
+      <div class="rail"><span class="dot o"></span><span class="rline"></span><span class="dot d"></span></div>
+      <div>
+        <div class="pt">${t.from}<small>${sideOf(t.from)}</small></div>
+        <div class="pt dest">${t.to}<small>${sideOf(t.to)}</small></div>
+      </div>
+    </div>
+    <div class="trip-foot">
+      <div class="who">
+        <div class="ava">${initials(t.by.name)}</div>
+        <div style="min-width:0">
+          <div class="who-name"><span>${t.by.name}</span>${t.by.sv?'<span class="sv">✓ SV</span>':''}</div>
+          <div class="rating">★ ${t.by.rating.toFixed(1)} · ${t.left} ghế</div>
+        </div>
+      </div>
+      <div class="price"><b>${money(t.price)}</b><small>/ người</small></div>
+    </div>
+  </article>`;
+}
+
+/* ---------- DETAIL ---------- */
+function viewDetail(id){
+  const t=S.trips.find(x=>x.id===id); if(!t) return viewBoard();
+  const typeb= t.type==="offer"?`<span class="badge b-offer">Có ghế trống</span>`:`<span class="badge b-need">Tìm người ghép</span>`;
+  let cta;
+  if(t.req==="pending") cta=`<button class="btn ghost" disabled>Đang chờ duyệt…</button>`;
+  else if(t.req==="accepted") cta=`<div class="contact"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5c0 8 7 15 15 15l0-3-4-1-2 2a13 13 0 0 1-6-6l2-2-1-4z"/></svg>Liên hệ: ${t.by.phone} · ${t.by.name}</div>`;
+  else cta=`<button class="btn primary" data-act="join" data-trip="${t.id}">Xin tham gia chuyến</button>`;
+  return `
+    <button class="back" data-act="back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Bảng tin</button>
+    <div style="display:flex;gap:8px;margin:6px 0 14px">${typeb}${t.women?'<span class="badge b-women">Nữ với nữ</span>':''}</div>
+    <div class="panel">
+      <div class="route" style="padding:0 0 4px">
+        <div class="rail"><span class="dot o"></span><span class="rline" style="min-height:26px"></span><span class="dot d"></span></div>
+        <div>
+          <div class="pt" style="font-size:16px">${t.from}<small>${sideOf(t.from)}</small></div>
+          <div class="pt dest" style="font-size:16px;margin-top:14px">${t.to}<small>${sideOf(t.to)}</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="kv"><span class="k">Thời gian</span><span class="v">${t.day} · ${t.time}</span></div>
+      <div class="kv"><span class="k">Chiều đi</span><span class="v">${dirLabel(t.dir)}</span></div>
+      <div class="kv"><span class="k">Ghế còn</span><span class="v">${t.left} / ${t.seats}</span></div>
+      <div class="kv"><span class="k">Chia phí ước tính</span><span class="v" style="color:var(--primary)">${money(t.price)} / người</span></div>
+      ${t.pickupNote?`<div class="kv"><span class="k">Điểm đón cụ thể</span><span class="v">📍 ${t.pickupNote}</span></div>`:''}
+      <div class="note">${t.note}</div>
+    </div>
+    <div class="eyebrow">Người đăng</div>
+    <div class="panel" style="display:flex;align-items:center;gap:12px">
+      <div class="ava" style="width:46px;height:46px;font-size:18px">${initials(t.by.name)}</div>
+      <div>
+        <div class="who-name" style="font-size:15px"><span>${t.by.name}</span>${t.by.sv?'<span class="sv">✓ SV</span>':''}</div>
+        <div class="rating" style="margin-top:2px">★ ${t.by.rating.toFixed(1)} · ${t.by.gender==='female'?'Nữ':'Nam'}</div>
+      </div>
+    </div>
+    ${t.req!=="accepted"?'<p class="step-note" style="text-align:left;margin:0 0 10px">🔒 Số điện thoại chỉ hiện sau khi được duyệt vào chuyến.</p>':''}
+    ${cta}`;
+}
+
+/* ---------- CREATE ---------- */
+function viewCreate(){
+  return `
+    <h1 class="title">Đăng chuyến đi</h1>
+    <p class="sub">Điền thông tin để người khác tìm và ghép cùng bạn.</p>
+    <form id="createForm">
+      <label class="f">Loại chuyến</label>
+      <div class="seg" data-seg="ctype">
+        <button type="button" data-v="offer" aria-selected="true">Tôi có ghế trống</button>
+        <button type="button" data-v="need" aria-selected="false">Tôi tìm người ghép</button>
+      </div>
+      <input type="hidden" id="cType" value="offer">
+      <label class="f" for="cFrom">Điểm đi</label>
+      <select id="cFrom">${tripNodeOptions(PTS_HL[0])}</select>
+      <label class="f" for="cTo">Điểm đến</label>
+      <select id="cTo">${tripNodeOptions(PTS_HN[0])}</select>
+      <p class="step-note" style="text-align:left;margin:8px 0 0">Chiều đi tự suy ra từ vùng của điểm đi/đến (Hoà Lạc ↔ Hà Nội).</p>
+      <label class="f" for="cPickup">Điểm đón cụ thể (tuỳ chọn)</label>
+      <input id="cPickup" placeholder="VD: đón ở ngã tư Cầu Giấy, cổng số 2…">
+      <div class="row2">
+        <div><label class="f" for="cDay">Ngày</label><input id="cDay" value="Thứ 6, 06/09"></div>
+        <div><label class="f" for="cTime">Khung giờ</label>
+          <select id="cTime"><option>Sáng 08:00</option><option>Trưa 12:00</option><option selected>Chiều 17:00</option><option>Tối 19:30</option></select></div>
+      </div>
+      <div class="row2">
+        <div><label class="f" for="cSeats">Số ghế</label>
+          <select id="cSeats"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></div>
+        <div><label class="f" for="cPrice">Chia phí /người (k)</label><input id="cPrice" type="number" value="40" inputmode="numeric"></div>
+      </div>
+      <label class="f" for="cNote">Ghi chú</label>
+      <textarea id="cNote" placeholder="VD: Xe 5 chỗ, đón ở sảnh, có cốp để đồ…"></textarea>
+      <div class="switch"><div class="lb">Chỉ nhận nữ<small>Ưu tiên an toàn cho chuyến của bạn</small></div>
+        <button type="button" class="tg" id="cWomen" aria-checked="false" role="switch" aria-label="Chỉ nhận nữ"></button></div>
+      <button type="submit" class="btn primary block" style="margin-top:18px">Đăng chuyến</button>
+    </form>`;
+}
+
+/* ---------- MINE ---------- */
+function viewMine(){
+  const mine=S.trips.filter(t=>t.mine);
+  const joined=S.trips.filter(t=>t.req);
+  const mineHtml= mine.length? mine.map(mineCard).join("") : emptyState("Bạn chưa tạo chuyến nào","Đăng một chuyến để bắt đầu nhận yêu cầu.");
+  const joinHtml= joined.length? joined.map(joinedCard).join("") : `<p class="sub" style="margin:0">Bạn chưa xin tham gia chuyến nào.</p>`;
+  return `
+    <h1 class="title">Chuyến của tôi</h1>
+    <div class="eyebrow">Tôi tạo</div>
+    <div class="list">${mineHtml}</div>
+    <div class="eyebrow">Tôi tham gia</div>
+    <div class="list">${joinHtml}</div>`;
+}
+function mineCard(t){
+  const reqs=(t.reqs||[]);
+  const rows=reqs.length? reqs.map((r,i)=>`
+    <div class="req">
+      <div class="ava" style="width:34px;height:34px">${initials(r.name)}</div>
+      <div style="min-width:0">
+        <div class="who-name"><span>${r.name}</span>${r.sv?'<span class="sv">✓ SV</span>':''}</div>
+        <div class="rating">★ ${r.rating.toFixed(1)} · ${r.gender==='female'?'Nữ':'Nam'}</div>
+        ${r.status==='accepted'?`<div class="contact" style="margin-top:6px">☎ ${r.phone}</div>`:''}
+      </div>
+      <div class="acts">
+        ${r.status==='pending'?`
+          <button class="btn ghost sm" data-act="decline" data-trip="${t.id}" data-i="${i}">Từ chối</button>
+          <button class="btn primary sm" data-act="accept" data-trip="${t.id}" data-i="${i}">Duyệt</button>`:
+          `<span class="status ${r.status==='accepted'?'st-accepted':'st-declined'}">${r.status==='accepted'?'Đã duyệt':'Đã từ chối'}</span>`}
+      </div>
+    </div>`).join("") : `<p class="sub" style="margin:2px 0 0">Chưa có yêu cầu nào.</p>`;
+  return `<div class="card" style="padding:14px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+      <span class="badge b-offer">${t.type==='offer'?'Có ghế trống':'Tìm người ghép'}</span>
+      <span class="trip-time" style="margin-left:auto">${t.time}<small>${t.day}</small></span>
+    </div>
+    <div class="pt" style="font-size:15px;margin-top:8px">${t.from} → ${t.to}</div>
+    <div class="rating" style="margin:4px 0 12px">${t.left}/${t.seats} ghế còn · ${money(t.price)}/người</div>
+    <div class="eyebrow" style="margin:0 0 2px">Yêu cầu tham gia (${reqs.filter(r=>r.status==='pending').length})</div>
+    ${rows}
+    <button class="btn ghost block" data-act="rate" data-trip="${t.id}" style="margin-top:12px">Đánh giá sau chuyến</button>
+  </div>`;
+}
+function joinedCard(t){
+  const st= t.req==='pending'?'st-pending':t.req==='accepted'?'st-accepted':'st-declined';
+  const lbl= t.req==='pending'?'Chờ duyệt':t.req==='accepted'?'Đã được duyệt':'Bị từ chối';
+  return `<div class="card trip ${t.type==='offer'?'t-offer':'t-need'}" data-trip="${t.id}" style="cursor:pointer">
+    <div class="trip-top"><span class="who-name">${t.from} → ${t.to}</span><span class="status ${st}" style="margin-left:auto">${lbl}</span></div>
+    <div class="trip-foot"><div class="who"><div class="ava">${initials(t.by.name)}</div>
+      <div class="who-name"><span>${t.by.name}</span></div></div>
+      <div class="price"><b>${money(t.price)}</b><small>${t.day} · ${t.time}</small></div></div>
+    ${t.req==='accepted'?`<div style="padding:0 14px 12px"><div class="contact">☎ ${t.by.phone}</div></div>`:''}
+  </div>`;
+}
+
+/* ---------- NOTIFS ---------- */
+function viewNotifs(){
+  const rows=S.notifs.length? S.notifs.map(n=>`
+    <div class="notif ${n.read?'read':''}"><span class="ndot"></span>
+      <div><div class="ntext">${n.html}</div><div class="ntime">${n.time}</div></div></div>`).join("")
+    : emptyState("Chưa có thông báo","Yêu cầu và cập nhật chuyến sẽ hiện ở đây.");
+  return `<h1 class="title">Thông báo</h1>
+    <p class="sub">Cập nhật về yêu cầu và chuyến của bạn</p>
+    <div class="card" style="padding:2px 16px">${rows}</div>
+    <button class="btn ghost block" data-act="read-all" style="margin-top:14px">Đánh dấu đã đọc tất cả</button>`;
+}
+
+/* ---------- PROFILE ---------- */
+function viewProfile(){
+  const u=S.user;
+  return `<h1 class="title">Hồ sơ</h1>
+    <div class="phead">
+      <div class="ava">${initials(u.name)}</div>
+      <div><div style="font-size:19px;font-weight:800">${u.name} ${u.sv?'<span class="sv" style="vertical-align:middle">✓ SV</span>':''}</div>
+      <div class="rating" style="margin-top:3px">★ ${u.rating.toFixed(1)} · ${u.gender==='female'?'Nữ':'Nam'}</div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>${u.trips}</b><small>chuyến</small></div>
+      <div class="stat"><b>${u.rating.toFixed(1)}</b><small>đánh giá</small></div>
+      <div class="stat"><b>${u.sv?'✓':'—'}</b><small>xác minh SV</small></div>
+    </div>
+    ${!u.sv?`<div class="panel" style="border-color:var(--accent)"><div class="lb" style="font-weight:700;margin-bottom:2px">Chưa xác minh sinh viên</div>
+      <p class="sub" style="margin:0 0 10px">Cần badge SV để đăng và tham gia chuyến.</p>
+      <button class="btn primary sm" data-act="verify">Xác minh email trường</button></div>`:''}
+    <div class="eyebrow">Thông tin liên hệ</div>
+    <div class="panel">
+      <label class="f" style="margin-top:0" for="pPhone">Số điện thoại (tuỳ chọn)</label>
+      <input id="pPhone" value="${u.phone}" placeholder="Chỉ hiện khi được duyệt vào chuyến">
+      <p class="step-note" style="text-align:left;margin:8px 0 0">🔒 Không verify SMS. Số chỉ lộ cho người cùng chuyến đã được duyệt.</p>
+    </div>
+    <div class="switch"><div class="lb">Ưu tiên nữ với nữ<small>Chỉ hiện & nhận chuyến của bạn nữ</small></div>
+      <button type="button" class="tg" id="pWomen" aria-checked="${u.womenPref}" role="switch"></button></div>
+    <button class="btn ghost block" data-act="logout" style="margin-top:20px">Xem lại onboarding / Đăng xuất</button>
+    <p class="step-note" style="margin-top:18px">RoadMate · Bản prototype demo — dữ liệu là giả lập để chốt spec.</p>`;
+}
+
+function emptyState(t,s){
+  return `<div class="empty"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 9v3a3 3 0 0 0 3 3h3" stroke-dasharray="1 3"/></svg><div style="font-weight:700;color:var(--ink-2)">${t}</div><div style="margin-top:4px">${s}</div></div>`;
+}
+
+/* ---------- sheets ---------- */
+function openSheet(html){ const s=$("#sheet"); s.innerHTML=`<div class="grip"></div>`+html; $("#overlay").classList.add("show"); s.classList.add("show"); }
+function closeSheet(){ $("#overlay").classList.remove("show"); $("#sheet").classList.remove("show"); }
+$("#overlay").addEventListener("click",closeSheet);
+
+let rateStars=0;
+function openRate(){
+  rateStars=0;
+  openSheet(`<h3>Đánh giá chuyến đi</h3><p class="sub" style="margin:4px 0 0">Phản hồi giúp cộng đồng an toàn hơn.</p>
+    <div class="stars" id="starRow">${[1,2,3,4,5].map(i=>`<button data-s="${i}" aria-label="${i} sao">★</button>`).join("")}</div>
+    <textarea id="rateNote" placeholder="Nhận xét (tuỳ chọn)…"></textarea>
+    <button class="btn ghost block" data-act="report" style="margin-top:10px;color:var(--danger)">⚠ Báo cáo sự cố</button>
+    <button class="btn primary block" data-act="submit-rate" style="margin-top:8px">Gửi đánh giá</button>`);
+  $("#starRow").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return;
+    rateStars=+b.dataset.s; [...$("#starRow").children].forEach((x,i)=>x.classList.toggle("on",i<rateStars)); });
+}
+function openReport(){
+  openSheet(`<h3>Báo cáo sự cố</h3><p class="sub" style="margin:4px 0 12px">Chọn lý do. Đội ngũ sẽ xem xét.</p>
+    ${["Không đến đón / huỷ phút chót","Thu tiền cao hơn thoả thuận","Hành vi không phù hợp","Lo ngại an toàn","Khác"].map(r=>`<button class="btn ghost block" data-report="${r}" style="justify-content:flex-start;margin-top:8px">${r}</button>`).join("")}`);
+}
+
+/* ---------- toast ---------- */
+let tT;
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(tT); tT=setTimeout(()=>t.classList.remove("show"),2200); }
+
+/* ---------- theme ---------- */
+const themeIcon=()=>{ const dark=document.documentElement.getAttribute("data-theme")==="dark" || (!document.documentElement.getAttribute("data-theme") && matchMedia("(prefers-color-scheme:dark)").matches);
+  $("#themeBtn").innerHTML= dark
+    ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>'
+    : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5z"/></svg>'; };
+$("#themeBtn").addEventListener("click",()=>{ const el=document.documentElement;
+  const dark=el.getAttribute("data-theme")==="dark" || (!el.getAttribute("data-theme") && matchMedia("(prefers-color-scheme:dark)").matches);
+  el.setAttribute("data-theme", dark?"light":"dark"); themeIcon(); });
+
+/* ---------- bind per-render ---------- */
+function bind(){
+  // tab handled globally; here bind content
+  const seg=(name,cb)=>{ const el=screens.querySelector(`[data-seg="${name}"]`); if(!el)return;
+    el.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return;
+      [...el.children].forEach(x=>x.setAttribute("aria-selected",x===b)); cb(b.dataset.v); }); };
+
+  if(current==="board"){
+    const on=(id,ev,fn)=>{const el=$(id);if(el)el.addEventListener(ev,fn);};
+    on("#fFrom","change",e=>{S.filter.from=e.target.value;save();render();});
+    on("#fTo","change",e=>{S.filter.to=e.target.value;save();render();});
+    on("#advBtn","click",()=>{advOpen=!advOpen;render();});
+    on("#fDay","change",e=>{S.filter.day=e.target.value;save();render();});
+    on("#fFromNode","change",e=>{S.filter.fromNode=e.target.value;save();render();});
+    on("#fToNode","change",e=>{S.filter.toNode=e.target.value;save();render();});
+    screens.querySelectorAll("[data-tw]").forEach(c=>c.addEventListener("click",()=>{S.filter.timeWin=c.dataset.tw;save();render();}));
+    screens.querySelectorAll("[data-type]").forEach(c=>c.addEventListener("click",()=>{S.filter.type=c.dataset.type;save();render();}));
+    const w=screens.querySelector("[data-women]"); if(w)w.addEventListener("click",()=>{S.filter.women=!S.filter.women;save();render();});
+    screens.querySelectorAll("[data-trip]").forEach(c=>c.addEventListener("click",()=>openDetail(c.dataset.trip)));
+  }
+  if(current==="create"){
+    seg("ctype",v=>$("#cType").value=v);
+    const tg=$("#cWomen"); tg.addEventListener("click",()=>tg.setAttribute("aria-checked",tg.getAttribute("aria-checked")!=="true"));
+    $("#createForm").addEventListener("submit",e=>{e.preventDefault(); submitTrip();});
+  }
+  if(current==="mine"){
+    screens.querySelectorAll("[data-act]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();
+      const a=b.dataset.act,id=b.dataset.trip,i=+b.dataset.i;
+      if(a==="accept")acceptReq(id,i); if(a==="decline")declineReq(id,i); if(a==="rate")openRate();}));
+    screens.querySelectorAll("[data-trip]").forEach(c=>c.addEventListener("click",()=>{ if(c.dataset.trip&&c.classList.contains("trip"))openDetail(c.dataset.trip);}));
+  }
+  if(current==="notifs"){
+    const r=screens.querySelector('[data-act="read-all"]'); if(r)r.addEventListener("click",()=>{S.notifs.forEach(n=>n.read=true);save();render();toast("Đã đánh dấu tất cả là đã đọc");});
+  }
+  if(current==="profile"){
+    const v=screens.querySelector('[data-act="verify"]'); if(v)v.addEventListener("click",verifyEmail);
+    const lo=screens.querySelector('[data-act="logout"]'); if(lo)lo.addEventListener("click",()=>{S.loggedIn=false;save();render();});
+    const pw=$("#pWomen"); if(pw)pw.addEventListener("click",()=>{S.user.womenPref=!S.user.womenPref;pw.setAttribute("aria-checked",S.user.womenPref);save();});
+    const pp=$("#pPhone"); if(pp)pp.addEventListener("change",()=>{S.user.phone=pp.value;save();toast("Đã lưu số điện thoại");});
+  }
+}
+
+/* ---------- actions ---------- */
+function openDetail(id){ screens.innerHTML=`<div class="screen active">${viewDetail(id)}</div>`; screens.scrollTop=0;
+  screens.querySelector('[data-act="back"]').addEventListener("click",render);
+  const j=screens.querySelector('[data-act="join"]'); if(j)j.addEventListener("click",()=>joinTrip(id));
+}
+function joinTrip(id){
+  if(!S.user.sv){ toast("Cần xác minh SV để tham gia — vào Hồ sơ"); return; }
+  const t=S.trips.find(x=>x.id===id); t.req="pending"; save();
+  S.notifs.unshift({id:"j"+Date.now(),html:`Đã gửi yêu cầu tham gia chuyến của <b>${t.by.name}</b>`,time:"vừa xong",read:false}); save();
+  openDetail(id); toast("Đã gửi yêu cầu — chờ chủ chuyến duyệt");
+}
+function acceptReq(id,i){ const t=S.trips.find(x=>x.id===id); t.reqs[i].status="accepted"; if(t.left>0)t.left--; save(); render();
+  toast("Đã duyệt — số điện thoại đã hiện cho cả hai"); }
+function declineReq(id,i){ const t=S.trips.find(x=>x.id===id); t.reqs[i].status="declined"; save(); render(); toast("Đã từ chối yêu cầu"); }
+function submitTrip(){
+  const type=$("#cType").value, from=$("#cFrom").value, to=$("#cTo").value;
+  if(sideOf(from)===sideOf(to)){ toast("Điểm đi và điểm đến phải khác vùng (Hoà Lạc ↔ Hà Nội)"); return; }
+  const dir=sideOf(from)==="Hoà Lạc"?"HL_HN":"HN_HL";
+  const t={id:"new"+Date.now(),dir,type,from,to,day:$("#cDay").value,time:$("#cTime").value,
+    seats:+$("#cSeats").value,left:+$("#cSeats").value,price:+$("#cPrice").value||0,women:$("#cWomen").getAttribute("aria-checked")==="true",
+    mine:true,by:{name:S.user.name,gender:S.user.gender,sv:S.user.sv,rating:S.user.rating,phone:S.user.phone},note:$("#cNote").value||"(Không có ghi chú)",pickupNote:$("#cPickup").value.trim(),reqs:[]};
+  S.trips.unshift(t); S.user.trips++; save(); current="mine"; render(); toast("Đã đăng chuyến! Xem ở Chuyến của tôi");
+}
+function verifyEmail(){
+  openSheet(`<h3>Xác minh sinh viên</h3><p class="sub" style="margin:4px 0 12px">Nhập email trường để nhận badge SV (magic link mô phỏng).</p>
+    <input id="svEmail" placeholder="ten@st.uni.edu.vn" value="cuong@st.uni.edu.vn">
+    <button class="btn primary block" data-act="do-verify" style="margin-top:12px">Gửi liên kết xác minh</button>`);
+}
+
+/* ---------- global delegation for sheet + login ---------- */
+document.addEventListener("click",e=>{
+  const el=e.target.closest("[data-act]"); if(!el)return;
+  const a=el.dataset.act;
+  if(a==="login-zalo"){ // simulate zalo login then verify step
+    openSheet(`<h3>Đăng nhập bằng Zalo</h3><p class="sub" style="margin:4px 0 14px">Mô phỏng: Zalo xác thực → tạo tài khoản theo zalo_id.</p>
+      <div style="display:flex;align-items:center;gap:12px;background:var(--surface-2);padding:12px;border-radius:12px;margin-bottom:14px">
+        <div class="ava">C</div><div><b>Cường</b><div class="rating">qua Zalo · id 8x92…</div></div></div>
+      <button class="btn primary block" data-act="finish-login">Tiếp tục</button>`);
+  }
+  else if(a==="finish-login"){ S.loggedIn=true; save(); closeSheet(); current="board"; render(); toast("Đăng nhập thành công qua Zalo"); }
+  else if(a==="skip-login"){ e.preventDefault(); S.loggedIn=true; save(); current="board"; render(); }
+  else if(a==="do-verify"){ S.user.sv=true; S.trips.forEach(t=>{if(t.mine)t.by.sv=true;}); save(); closeSheet(); render(); toast("Đã xác minh — bạn nhận badge SV ✓"); }
+  else if(a==="submit-rate"){ if(rateStars===0){toast("Chọn số sao trước nhé");return;} closeSheet(); toast("Cảm ơn! Đã gửi đánh giá "+rateStars+"★"); }
+  else if(a==="report"){ openReport(); }
+});
+document.addEventListener("click",e=>{ const r=e.target.closest("[data-report]"); if(!r)return; closeSheet(); toast("Đã gửi báo cáo — cảm ơn bạn"); });
+
+/* ---------- tabbar ---------- */
+$("#tabbar").addEventListener("click",e=>{ const t=e.target.closest(".tab"); if(!t)return; current=t.dataset.tab; render(); });
+
+themeIcon();
+matchMedia("(prefers-color-scheme:dark)").addEventListener("change",themeIcon);
+render();
+</script>
