@@ -26,8 +26,8 @@ Next.js (App Router, TS) · Supabase (Postgres/Auth/RLS/Realtime/Storage) · Tai
 | # | Phase | Ưu tiên | Phụ thuộc | Trạng thái |
 |---|-------|---------|-----------|-----------|
 | 01 | [Setup & Foundations](phase-01-setup-foundations.md) | P1 | — | ✅ done (2026-09-23) |
-| 02 | [Data Model & RLS](phase-02-data-model-rls.md) | P1 | 01 | pending (next) |
-| 03 | [Auth (Zalo + Email Badge)](phase-03-auth-zalo-email-badge.md) | P1 | 01, 02 | pending |
+| 02 | [Data Model & RLS](phase-02-data-model-rls.md) | P1 | 01 | ✅ done (2026-09-23) |
+| 03 | [Auth (Zalo + Email Badge)](phase-03-auth-zalo-email-badge.md) | P1 | 01, 02 | pending (next) |
 | 04 | [Trip Board & Create](phase-04-trip-board-create.md) | P1 | 02, 03 | pending |
 | 05 | [Requests & Notifications](phase-05-requests-notifications.md) | P1 | 04 | pending |
 | 06 | [Reviews, Profile & Safety](phase-06-reviews-profile-safety.md) | P2 | 05 | pending |

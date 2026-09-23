@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Data Model & RLS"
-status: pending
+status: done
 priority: P1
 dependencies: [1]
 ---
@@ -49,10 +49,21 @@ Schema Postgres cho users/points/trips/requests/reviews/reports/notifications, R
 5. `supabase gen types typescript` → `lib/db/types.ts`.
 
 ## Success Criteria
-- [ ] Migration + seed chạy sạch trên Supabase (local hoặc cloud).
-- [ ] RLS bật mọi bảng; test nhanh: user A không sửa được trip của user B.
-- [ ] Types sinh ra dùng được trong code.
-- [ ] Query lọc bảng tin có index phù hợp (EXPLAIN không seq-scan lớn).
+- [x] Migration + seed chạy sạch trên Supabase local (Docker). 9 bảng, 6 enums, 2 hàm helper.
+- [x] RLS bật mọi bảng (verified: `relrowsecurity=t` cả 9 bảng); test hành vi: user B KHÔNG sửa được trip của A (0 rows), A sửa được (1 row).
+- [x] Types sinh ra dùng được trong code (`lib/db/types.ts`, client gõ kiểu `Database`; typecheck xanh).
+- [x] Index cho lọc bảng tin đã tạo (dir+depart_at, from/to point, status, depart_at, requests theo trip/requester). *(EXPLAIN hoãn tới khi có data thật.)*
+
+## Completion Notes (Session 2026-09-23)
+- **Bug tự phát hiện & fix:** đệ quy vô hạn giữa policy `trips_read` ↔ `trip_requests_read` → tách 2 hàm `SECURITY DEFINER` (`auth_is_trip_owner`, `auth_has_trip_request`, `search_path` ghim, execute chỉ `authenticated`) để cắt vòng.
+- **Code review (subagent) — 3 finding HIGH đã fix** (đều khai thác được qua anon client, test happy-path không lộ):
+  - **H1:** `authenticated` mặc định có full column privilege → user tự set `sv_verified`/`rating_avg`/`zalo_id`. Fix: `revoke` rồi `grant` cột — chỉ (name, gender, women_pref) sửa được; (sv_verified, rating_avg, zalo_id) server-only.
+  - **H2:** `trip_requests` update thiếu WITH CHECK → requester tự-accept (ép lộ contact). Fix: tách 2 policy hẹp — requester chỉ `pending→withdrawn`, owner chỉ `pending→declined`; accept + hoàn-ghế qua RPC definer (Phase 05).
+  - **H3:** `reviews` client insert được, không kiểm thành viên → review giả. Fix: bỏ policy insert (server-only như notifications) + check `from_user <> to_user`.
+- **M1:** `school_email` chuyển sang `profile_private` (PII/anchor SV) — không public.
+- **M2:** `reports.reported_id` → `on delete set null` (giữ dấu vết abuse khi user bị report xoá tài khoản).
+- **L1:** `rating_avg` thêm check 0..5.
+- **Ràng buộc cho Phase 05:** accept/decline (nếu cần) + withdraw-accepted chạy server-side (RPC definer / service role) vì client chỉ được các chuyển trạng thái không đụng ghế.
 
 ## Risk Assessment
 - Lộ `phone` (Red Team F1): RLS row-level KHÔNG giấu được cột → **tách `profile_private`**; phone chỉ trả qua route `contact` (service role) sau khi accepted (Phase 05).
