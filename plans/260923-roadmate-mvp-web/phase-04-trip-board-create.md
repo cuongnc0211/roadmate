@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Trip Board & Create"
-status: pending
+status: done
 priority: P1
 dependencies: [2, 3]
 ---
@@ -43,11 +43,19 @@ Cơ chế cốt lõi: API + UI cho bảng tin (lọc 2 tầng) và đăng chuy�
 6. Refresh bảng tin sau khi tạo/quay lại (KHÔNG realtime — hoãn).
 
 ## Success Criteria
-- [ ] Tạo chuyến hợp lệ → xuất hiện trên bảng tin; tạo cùng vùng → bị chặn với thông báo rõ.
-- [ ] Lọc 2 tầng hoạt động đúng (vùng mặc định; nâng cao: ngày/giờ/loại/nữ/node; node override vùng). `day`/`timeWindow` lọc theo `depart_at`.
-- [ ] Bảng tin mặc định **không hiện chuyến quá hạn** (`depart_at >= now()`).
-- [ ] API `/api/trips` không trả `phone`.
-- [ ] User đã đăng nhập POST được chuyến **không cần badge SV** (soft gate); badge hiển thị nếu có.
+- [x] Tạo chuyến hợp lệ → hiện trên bảng tin; cùng vùng → chặn (test: same_zone 400; quá khứ 400; ghế>8 400 zod).
+- [x] Lọc 2 tầng đúng (direction segmented; nâng cao: ngày/giờ/loại/nữ/node; node override vùng qua `parseTripFilters`). day/timeWindow lọc theo `depart_at` (giờ VN).
+- [x] Bảng tin mặc định không hiện chuyến quá hạn (`depart_at >= now()`), chỉ `open/full`.
+- [x] `/api/trips` không trả `phone` (embed chỉ cột được grant; type suy từ `QueryData` để compiler chặn rò).
+- [x] User đăng nhập POST được **không cần badge SV** (soft gate); badge SV hiển thị trên card/detail nếu có.
+
+## Completion Notes (Session 2026-09-23)
+- **API-first:** `GET/POST /api/trips`, `GET /api/trips/:id`; UI (board/create/detail) dùng chung `lib/trips/query.ts` (fetchTrips/fetchTripById + `parseTripFilters`) → Mini App tái dùng đúng logic.
+- **Trust-sensitive fields set server-side:** `dir` suy từ zone của point (query DB, không tin client), `creator_id=auth.uid()`, `seats_left=seats_total`, `status` mặc định DB. RLS `trips_insert_own` chốt lại.
+- **Timezone:** `depart_at` timestamptz; nhập từ datetime-local (giờ VN) → `vnLocalToIso` (+07:00); hiển thị + bucket giờ (Sáng/Trưa/Chiều/Tối) qua `Intl` `Asia/Ho_Chi_Minh`.
+- **Code review (subagent) — không Critical/High.** Xác nhận: không rò phone/PII, RLS là backstop thật (dùng anon client), field nhạy cảm set ở server, UTC+7 đúng. Đã fix Medium: (M1) bỏ `as unknown as`, dùng `QueryData<typeof tripSelect>` để **compiler chặn rò phone**; (M2) thêm `.limit(100)` cho board.
+- **Hoãn (nợ kỹ thuật, đã ghi):** chưa có test infra (vitest) — nên thêm unit test cho `time.ts` (bucket/midnight) + `parseTripFilters`; `.limit` post-filter có thể under-fill khi volume lớn → chuyển filter ngày/giờ xuống SQL sau.
+- Nút "Xin tham gia" ở detail hiện là placeholder → Phase 05.
 
 ## Risk Assessment
 - Trùng lệch giữa filter UI và query server: viết test cho `lib/trips/query.ts`.

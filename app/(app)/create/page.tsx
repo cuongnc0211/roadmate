@@ -1,12 +1,25 @@
-import { PageStub } from "@/components/shell/page-stub";
+import { CreateTripForm } from "@/components/create/create-trip-form";
+import { requireUser } from "@/lib/auth/guards";
+import type { Point } from "@/lib/points";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Đăng chuyến" };
 
-export default function CreatePage() {
+export default async function CreatePage() {
+  await requireUser();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("points")
+    .select("id, name, zone, sort")
+    .order("sort");
+  const points = (data ?? []) as Point[];
+
   return (
-    <PageStub
-      title="Đăng chuyến đi"
-      note="Form đăng chuyến (điểm đi/đến theo node, chiều tự suy ra) sẽ được xây ở Phase 04."
-    />
+    <section>
+      <h1 className="mb-4 text-[22px] font-extrabold tracking-tight text-ink">
+        Đăng chuyến đi
+      </h1>
+      <CreateTripForm points={points} />
+    </section>
   );
 }
