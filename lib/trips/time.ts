@@ -39,25 +39,42 @@ export function windowOfHour(hour: number): TimeWindow | null {
   return null;
 }
 
-/** Human labels (VN) for a departure instant. */
+const VN_WEEKDAY: Record<string, string> = {
+  Mon: "Th 2",
+  Tue: "Th 3",
+  Wed: "Th 4",
+  Thu: "Th 5",
+  Fri: "Th 6",
+  Sat: "Th 7",
+  Sun: "CN",
+};
+
+/**
+ * Human labels (VN) for a departure instant.
+ * Built from STABLE English-locale numeric parts + a manual VN weekday map so
+ * the output is identical on server and client (avoids hydration mismatches
+ * from locale-data differences between Node's ICU and the browser).
+ */
 export function labelForDepart(iso: string): {
   dateLabel: string;
   timeLabel: string;
 } {
-  const d = new Date(iso);
-  const dateLabel = new Intl.DateTimeFormat("vi-VN", {
+  const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: TZ,
     weekday: "short",
     day: "2-digit",
     month: "2-digit",
-  }).format(d);
-  const timeLabel = new Intl.DateTimeFormat("vi-VN", {
-    timeZone: TZ,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  }).format(d);
-  return { dateLabel, timeLabel };
+  }).formatToParts(new Date(iso));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const weekday = VN_WEEKDAY[get("weekday")] ?? get("weekday");
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  return {
+    dateLabel: `${weekday} ${get("day")}/${get("month")}`,
+    timeLabel: `${hour}:${get("minute")}`,
+  };
 }
 
 /**
