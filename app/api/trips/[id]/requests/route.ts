@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { logEvent } from "@/lib/analytics";
+import { emailUser } from "@/lib/email-notify";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 /** POST /api/trips/:id/requests — ask to join. Soft gate: login only. */
@@ -64,6 +66,13 @@ export async function POST(
     type: "new_request",
     payload: { trip_id: tripId, request_id: created.id },
   });
+
+  await logEvent("request_created", { userId: user.id, tripId });
+  await emailUser(
+    trip.creator_id,
+    "RoadMate — có người xin tham gia chuyến",
+    "Có người vừa xin tham gia một chuyến bạn đăng. Mở RoadMate để duyệt hoặc từ chối.",
+  );
 
   return NextResponse.json({ id: created.id }, { status: 201 });
 }

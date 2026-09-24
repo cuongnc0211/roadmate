@@ -16,6 +16,7 @@ type Initial = {
   womenPref: boolean;
   svVerified: boolean;
   ratingAvg: number;
+  emailNotifications: boolean;
   phone: string | null;
 };
 
@@ -36,6 +37,9 @@ export function ProfilePanel({
   const [gender, setGender] = React.useState<Gender>(initial.gender);
   const [phone, setPhone] = React.useState(initial.phone ?? "");
   const [womenPref, setWomenPref] = React.useState(initial.womenPref);
+  const [emailNotifications, setEmailNotifications] = React.useState(
+    initial.emailNotifications,
+  );
   const [saving, setSaving] = React.useState(false);
 
   async function save() {
@@ -48,6 +52,7 @@ export function ProfilePanel({
         gender,
         phone: phone.trim() || null,
         womenPref,
+        emailNotifications,
       }),
     });
     setSaving(false);
@@ -125,6 +130,15 @@ export function ProfilePanel({
             className="size-5 accent-[var(--primary)]"
           />
         </label>
+        <label className="flex items-center justify-between rounded-[var(--r-sm)] border border-border p-3">
+          <span className="text-sm font-semibold text-ink-2">Nhận email thông báo</span>
+          <input
+            type="checkbox"
+            checked={emailNotifications}
+            onChange={(e) => setEmailNotifications(e.target.checked)}
+            className="size-5 accent-[var(--primary)]"
+          />
+        </label>
         <Button block disabled={saving} onClick={save}>
           {saving ? "Đang lưu…" : "Lưu hồ sơ"}
         </Button>
@@ -153,6 +167,16 @@ export function ProfilePanel({
         <LogOut className="size-4" />
         Đăng xuất
       </Button>
+
+      <p className="pb-2 text-center text-xs text-ink-3">
+        <a href="/legal/terms" className="font-semibold text-ink-2">
+          Điều khoản
+        </a>
+        {" · "}
+        <a href="/legal/disclaimer" className="font-semibold text-ink-2">
+          Miễn trừ trách nhiệm
+        </a>
+      </p>
     </div>
   );
 }

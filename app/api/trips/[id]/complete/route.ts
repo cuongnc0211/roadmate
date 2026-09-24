@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { logEvent } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/server";
 
 /** POST /api/trips/:id/complete — owner marks the trip done. */
@@ -32,5 +33,6 @@ export async function POST(
   if (!data || data.length === 0) {
     return NextResponse.json({ error: "not_allowed" }, { status: 403 });
   }
+  await logEvent("trip_completed", { userId: user.id, tripId: id });
   return NextResponse.json({ ok: true });
 }

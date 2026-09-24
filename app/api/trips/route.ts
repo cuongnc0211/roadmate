@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { logEvent } from "@/lib/analytics";
 import { dirFromZone, type Zone } from "@/lib/points";
 import { createTripSchema } from "@/lib/trips/schema";
 import { fetchTrips, parseTripFilters } from "@/lib/trips/query";
@@ -87,5 +88,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 
+  await logEvent("trip_created", { userId: user.id, tripId: trip.id });
   return NextResponse.json({ id: trip.id }, { status: 201 });
 }

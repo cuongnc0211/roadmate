@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "PWA, Deploy & Launch"
-status: pending
+status: done
 priority: P2
 dependencies: [4, 5, 6]
 ---
@@ -40,11 +40,19 @@ Hoàn thiện PWA + thông báo (in-app + email), trang pháp lý (ToS/miễn tr
 7. Smoke test toàn luồng trên production.
 
 ## Success Criteria
-- [ ] Cài PWA trên mobile, mở standalone; offline shell không vỡ.
-- [ ] Email gửi đúng cho 3 sự kiện chính.
-- [ ] Dán link chuyến vào chat hiện preview (OG) đúng.
-- [ ] Query fill rate chạy ra số; các event được ghi.
-- [ ] Production deploy xanh; seed 5 node + corridor có mặt; smoke test luồng chính pass.
+- [x] PWA: manifest + icons + service worker + offline shell (từ Phase 01); installable.
+- [x] Email 3 sự kiện (request mới / được duyệt / bị từ chối) qua `lib/email-notify` (Resend nếu có key, dev log); tôn trọng opt-out `email_notifications`.
+- [~] OG meta cho `/trip/:id` (`generateMetadata`). **Hạn chế:** trang detail chặn đăng nhập → crawler ngoài (FB/Zalo) unfurl không thấy; cần public preview route (đã ghi ở DEPLOY.md, hoãn).
+- [x] Fill rate query ra số (test DB: 2 total / 1 matched = 0.5); events ghi được (bảng server-only). `GET /api/metrics` (authed).
+- [~] **Deploy production: cần credential của user** (Vercel + Supabase cloud + Resend) → hướng dẫn đầy đủ ở `DEPLOY.md`; không tự chạy được.
+
+## Completion Notes (Session 2026-09-24)
+- **Metrics (migration 0005):** bảng `events` (server-only, RLS + revoke) + `logEvent` best-effort (không ném lỗi vào request path) wired vào trip_created/request_created/request_accepted/trip_completed; `getFillRate` = % chuyến (khác cancelled) có ≥1 request accepted; `GET /api/metrics` (authed).
+- **Email:** `lib/email-notify.emailUser` (lấy email qua Admin API, bỏ qua nếu `email_notifications=false`, best-effort) gọi ở request/accept/decline; toggle nhận email ở Hồ sơ (`profiles.email_notifications`, client-writable qua column grant).
+- **Legal:** `/legal/terms` + `/legal/disclaimer` (public, tư thế "chia sẻ chi phí" — không hoa hồng/giữ tiền), link ở login + hồ sơ.
+- **CI:** `.github/workflows/ci.yml` (pnpm install + lint + typecheck + build).
+- **Deploy:** `DEPLOY.md` (Supabase cloud link/db push/seed + Auth redirect, Resend SPF/DKIM, Vercel env, smoke test, follow-ups).
+- **Nợ kỹ thuật ghi rõ:** chưa có test suite (nên thêm Vitest cho time/query/route-auth); OG public preview; luật sư rà Nghị định 10/2020 trước truyền thông rộng; deploy thật cần user thực hiện.
 
 ## Risk Assessment
 - Email vào spam: cấu hình domain/SPF/DKIM cho Resend; MVP có thể chấp nhận in-app trước.

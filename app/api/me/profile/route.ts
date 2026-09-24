@@ -18,7 +18,7 @@ export async function GET() {
   const [{ data: profile }, { data: priv }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("name, gender, women_pref, sv_verified, rating_avg")
+      .select("name, gender, women_pref, sv_verified, rating_avg, email_notifications")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -34,6 +34,7 @@ const patchSchema = z.object({
   name: z.string().trim().min(1).max(60).optional(),
   gender: z.enum(["male", "female", "other"]).nullable().optional(),
   womenPref: z.boolean().optional(),
+  emailNotifications: z.boolean().optional(),
   phone: z.string().trim().max(20).nullable().optional(),
 });
 
@@ -51,13 +52,15 @@ export async function PATCH(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
-  const { name, gender, womenPref, phone } = parsed.data;
+  const { name, gender, womenPref, emailNotifications, phone } = parsed.data;
 
   // Only client-writable columns (column grant blocks the rest).
   const profilePatch: ProfileUpdate = {};
   if (name !== undefined) profilePatch.name = name;
   if (gender !== undefined) profilePatch.gender = gender;
   if (womenPref !== undefined) profilePatch.women_pref = womenPref;
+  if (emailNotifications !== undefined)
+    profilePatch.email_notifications = emailNotifications;
 
   if (Object.keys(profilePatch).length > 0) {
     const { error } = await supabase

@@ -20,6 +20,17 @@ export default function LoginPage() {
           </p>
         </div>
         <LoginForm />
+        <p className="mt-6 text-center text-xs text-ink-3">
+          Bằng việc đăng nhập, bạn đồng ý với{" "}
+          <a href="/legal/terms" className="font-semibold text-primary">
+            Điều khoản
+          </a>{" "}
+          và{" "}
+          <a href="/legal/disclaimer" className="font-semibold text-primary">
+            Miễn trừ trách nhiệm
+          </a>
+          .
+        </p>
       </div>
     </main>
   );

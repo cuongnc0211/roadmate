@@ -49,6 +49,48 @@ export type Database = {
         }
         Relationships: []
       }
+      events: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+          trip_id: string | null
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          trip_id?: string | null
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          trip_id?: string | null
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -148,6 +190,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          email_notifications: boolean
           gender: Database["public"]["Enums"]["gender"] | null
           id: string
           name: string
@@ -158,6 +201,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email_notifications?: boolean
           gender?: Database["public"]["Enums"]["gender"] | null
           id: string
           name?: string
@@ -168,6 +212,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email_notifications?: boolean
           gender?: Database["public"]["Enums"]["gender"] | null
           id?: string
           name?: string

@@ -10,7 +10,7 @@ export default async function ProfilePage() {
   const [{ data: profile }, { data: priv }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("name, gender, women_pref, sv_verified, rating_avg")
+      .select("name, gender, women_pref, sv_verified, rating_avg, email_notifications")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -33,6 +33,7 @@ export default async function ProfilePage() {
           womenPref: profile?.women_pref ?? false,
           svVerified: profile?.sv_verified ?? false,
           ratingAvg: profile?.rating_avg ?? 0,
+          emailNotifications: profile?.email_notifications ?? true,
           phone: priv?.phone ?? null,
         }}
       />

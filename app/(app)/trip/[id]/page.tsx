@@ -10,7 +10,30 @@ import { fetchTripById } from "@/lib/trips/query";
 import { labelForDepart } from "@/lib/trips/time";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata = { title: "Chi tiết chuyến" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  try {
+    const supabase = await createClient();
+    const trip = await fetchTripById(supabase, id);
+    if (!trip) return { title: "Chuyến đi" };
+    const { dateLabel, timeLabel } = labelForDepart(trip.depart_at);
+    const route = `${trip.from_point?.name ?? "?"} → ${trip.to_point?.name ?? "?"}`;
+    return {
+      title: route,
+      description: `${route} · ${timeLabel} ${dateLabel} · ${formatVnd(trip.price_per_person)}/người · còn ${trip.seats_left} chỗ`,
+      openGraph: {
+        title: `RoadMate · ${route}`,
+        description: `${timeLabel} ${dateLabel} · ${formatVnd(trip.price_per_person)}/người`,
+      },
+    };
+  } catch {
+    return { title: "Chuyến đi" };
+  }
+}
 
 export default async function TripDetailPage({
   params,
