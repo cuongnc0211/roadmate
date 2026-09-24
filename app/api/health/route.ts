@@ -16,7 +16,9 @@ export async function GET() {
   }
 
   try {
-    const res = await fetch(`${url}/rest/v1/`, {
+    // Hit the auth settings endpoint: 200 with a valid apikey on both the local
+    // stack and Supabase cloud (the REST root is anon-forbidden on cloud).
+    const res = await fetch(`${url}/auth/v1/settings`, {
       headers: { apikey: anon },
       cache: "no-store",
     });
