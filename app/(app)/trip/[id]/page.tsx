@@ -27,6 +27,13 @@ export default async function TripDetailPage({
   const isOffer = trip.type === "offer";
   const isOwner = trip.creator?.id === user.id;
 
+  const { data: myRequest } = await supabase
+    .from("trip_requests")
+    .select("id, status")
+    .eq("trip_id", id)
+    .eq("requester_id", user.id)
+    .maybeSingle();
+
   return (
     <section>
       <Link
@@ -97,7 +104,12 @@ export default async function TripDetailPage({
       </div>
 
       <div className="mt-4">
-        <JoinCta isOwner={isOwner} />
+        <JoinCta
+          isOwner={isOwner}
+          tripId={trip.id}
+          tripStatus={trip.status}
+          myRequest={myRequest}
+        />
       </div>
     </section>
   );

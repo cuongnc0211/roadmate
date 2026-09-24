@@ -1,0 +1,20 @@
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
+
+/** Marks all notifications read once when the page is viewed. */
+export function MarkReadOnView() {
+  const router = useRouter();
+  const ran = React.useRef(false);
+
+  React.useEffect(() => {
+    if (ran.current) return;
+    ran.current = true;
+    fetch("/api/notifications/read", { method: "POST" })
+      .then(() => router.refresh())
+      .catch(() => {});
+  }, [router]);
+
+  return null;
+}

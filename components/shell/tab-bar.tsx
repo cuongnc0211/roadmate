@@ -21,13 +21,14 @@ const TABS: Tab[] = [
   { href: "/profile", label: "Hồ sơ", icon: User },
 ];
 
-export function TabBar() {
+export function TabBar({ unreadCount = 0 }: { unreadCount?: number }) {
   const pathname = usePathname();
 
   return (
     <nav className="flex shrink-0 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]">
       {TABS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
+        const showBadge = href === "/notifs" && unreadCount > 0;
         return (
           <Link
             key={href}
@@ -38,7 +39,14 @@ export function TabBar() {
               active ? "text-primary" : "text-ink-3 hover:text-ink-2",
             )}
           >
-            <Icon className="size-[21px]" strokeWidth={active ? 2.4 : 2} />
+            <span className="relative">
+              <Icon className="size-[21px]" strokeWidth={active ? 2.4 : 2} />
+              {showBadge ? (
+                <span className="absolute -right-2 -top-1.5 grid min-w-4 place-items-center rounded-full bg-danger px-1 text-[9px] font-bold leading-4 text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : null}
+            </span>
             <span className="leading-none">{label}</span>
           </Link>
         );

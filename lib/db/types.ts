@@ -443,8 +443,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_request: { Args: { p_request_id: string }; Returns: undefined }
       auth_has_trip_request: { Args: { t_id: string }; Returns: boolean }
       auth_is_trip_owner: { Args: { t_id: string }; Returns: boolean }
+      cancel_trip: { Args: { p_trip_id: string }; Returns: undefined }
+      decline_request: { Args: { p_request_id: string }; Returns: undefined }
+      withdraw_request: { Args: { p_request_id: string }; Returns: undefined }
     }
     Enums: {
       gender: "male" | "female" | "other"

@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Requests & Notifications"
-status: pending
+status: done
 priority: P1
 dependencies: [4]
 ---
@@ -44,11 +44,19 @@ Vòng đời ghép: xin tham gia → chủ duyệt/từ chối → duyệt thì 
 6. Enforce women-only: chặn join nếu trip `women_only` và requester không phải nữ.
 
 ## Success Criteria
-- [ ] Accept trừ đúng 1 ghế, không bao giờ âm; hết ghế → `status='full'`, không accept thêm được.
-- [ ] **Rút chỗ đã accepted / chủ huỷ chuyến hoàn ghế atomic đúng** (full → open); rút pending không đụng ghế (Red Team F4).
-- [ ] `phone` đọc từ `profile_private` (service role), chỉ trả cho hai bên đã accepted (test: bên thứ ba/pending/đã rút không lấy được).
-- [ ] Thông báo tạo đúng cho request/accept/decline/**cancel/withdraw**; badge chưa đọc chính xác.
-- [ ] women-only chặn đúng.
+- [x] Accept trừ đúng 1 ghế (test DB + E2E: 3/3→2/3), không âm; hết ghế → `full`, accept thêm → `no_seats`.
+- [x] Rút chỗ đã accepted / chủ huỷ hoàn ghế atomic (full→open); rút pending không đụng ghế (test DB đủ nhánh).
+- [x] `phone` đọc từ `profile_private` (service role), chỉ trả khi accepted (E2E: hiện "0987654321 · Chị Hà" sau duyệt); route kiểm định danh từ session (chống IDOR); chưa accepted → 403.
+- [x] Thông báo tạo đúng cho new_request/accepted/declined/cancel/withdraw; badge chưa đọc chính xác + tự mark-read khi mở.
+- [x] women-only chặn join đúng (kiểm gender ở route trước khi tạo request).
+
+## Completion Notes (Session 2026-09-24)
+- **Atomic seat RPCs (migration 0003, SECURITY DEFINER):** `accept_request` / `decline_request` / `withdraw_request` / `cancel_trip`. Mỗi hàm tự kiểm `auth.uid()` (owner/requester), khoá `trips ... FOR UPDATE` chống race, ghi notification trong cùng transaction. Client chỉ gọi qua route → RPC (không update ghế ở app layer).
+- **API:** `POST /trips/:id/requests` (soft gate, chặn tự-join + women-only + dup 409, notify owner), accept/decline/withdraw/cancel routes (gọi RPC), `GET /me/trips` (owned + joined), `GET /requests/:id/contact` (reveal phone qua service role khi accepted).
+- **UI:** `/mine` (OwnedTripCard: duyệt/từ chối/huỷ + ContactReveal; JoinedTripCard: rút/huỷ chỗ + ContactReveal), `/notifs` + badge chưa đọc trên TabBar (đếm ở `(app)/layout`), nút "Xin tham gia" ở detail thành luồng thật.
+- **Verify:** RPC test qua psql phủ mọi nhánh (accept→full, no_seats, not_owner, withdraw accepted→refund→open, withdraw pending no-op, cancel + notify); E2E trình duyệt: request→pending→owner duyệt (ghế 3/3→2/3)→contact reveal→notif + badge.
+- **Naming lệch:** contact endpoint là `/api/requests/:id/contact` (per-request, hỗ trợ nhiều khách) thay vì `/trips/:id/contact` như bản nháp plan; decline làm bằng RPC `decline_request` để notify server-side.
+- **Dev gotcha (không phải lỗi code):** Supabase local `auth.rate_limit.email_sent` mặc định = 2/giờ → nâng lên khi test nhiều; `PGRST303 "JWT issued at future"` do lệch giờ host/Docker VM sau khi máy sleep/đổi ngày → tự hết khi đồng bộ lại giờ. User seed bằng SQL thủ công không đăng nhập gotrue được (chỉ dùng làm dữ liệu).
 
 ## Risk Assessment
 - **Race khi accept nhiều request cùng lúc:** bắt buộc RPC atomic/transaction, không xử lý ở app layer.
