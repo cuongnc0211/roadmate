@@ -1,18 +1,15 @@
 import { TabBar } from "@/components/shell/tab-bar";
 import { TopBar } from "@/components/shell/top-bar";
-import { getUser } from "@/lib/auth/guards";
-import { getUnreadCount } from "@/lib/notifications";
 
 /**
  * App shell — mobile-first. On desktop it renders as a centered "phone" frame
  * (max 430px) so the mobile layout stays honest while developing.
+ * Auth is enforced by middleware; the unread badge loads client-side in TabBar
+ * so this layout does no per-navigation auth round-trip.
  */
-export default async function AppLayout({
+export default function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const user = await getUser();
-  const unread = user ? await getUnreadCount(user.id) : 0;
-
   return (
     <div className="flex min-h-dvh justify-center bg-ground sm:items-center sm:py-6">
       <div className="flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-ground sm:h-[860px] sm:max-h-[92vh] sm:rounded-[28px] sm:border sm:border-border sm:shadow-[var(--shadow-lg)]">
@@ -20,7 +17,7 @@ export default async function AppLayout({
         <main className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
           {children}
         </main>
-        <TabBar unreadCount={unread} />
+        <TabBar />
       </div>
     </div>
   );

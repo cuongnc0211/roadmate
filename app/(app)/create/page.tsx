@@ -1,12 +1,11 @@
 import { CreateTripForm } from "@/components/create/create-trip-form";
-import { requireUser } from "@/lib/auth/guards";
 import type { Point } from "@/lib/points";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Đăng chuyến" };
 
 export default async function CreatePage() {
-  await requireUser();
+  // Auth is enforced by middleware; points are public reference data.
   const supabase = await createClient();
   const { data } = await supabase
     .from("points")

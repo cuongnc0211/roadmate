@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, CarFront, List, PlusCircle, User } from "lucide-react";
@@ -21,8 +22,30 @@ const TABS: Tab[] = [
   { href: "/profile", label: "Hồ sơ", icon: User },
 ];
 
-export function TabBar({ unreadCount = 0 }: { unreadCount?: number }) {
+export const NOTIFS_READ_EVENT = "roadmate:notifs-read";
+
+export function TabBar() {
   const pathname = usePathname();
+  const [unreadCount, setUnreadCount] = React.useState(0);
+
+  const refetch = React.useCallback(() => {
+    fetch("/api/notifications/unread-count")
+      .then((r) => r.json())
+      .then((d) => setUnreadCount(d.count ?? 0))
+      .catch(() => {});
+  }, []);
+
+  // Load the badge client-side (non-blocking) and refresh on navigation, so the
+  // server page render doesn't pay for an auth round-trip + count query.
+  React.useEffect(() => {
+    refetch();
+  }, [pathname, refetch]);
+
+  // Clear immediately when notifications are marked read.
+  React.useEffect(() => {
+    window.addEventListener(NOTIFS_READ_EVENT, refetch);
+    return () => window.removeEventListener(NOTIFS_READ_EVENT, refetch);
+  }, [refetch]);
 
   return (
     <nav className="flex shrink-0 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]">

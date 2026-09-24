@@ -3,7 +3,6 @@ import { PlusCircle } from "lucide-react";
 
 import { BoardFilters } from "@/components/board/board-filters";
 import { TripCard } from "@/components/board/trip-card";
-import { requireUser } from "@/lib/auth/guards";
 import type { Point } from "@/lib/points";
 import { fetchTrips, parseTripFilters } from "@/lib/trips/query";
 import { createClient } from "@/lib/supabase/server";
@@ -17,7 +16,7 @@ export default async function BoardPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  await requireUser();
+  // Auth is enforced by middleware; no per-render getUser needed here.
   const sp = await searchParams;
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(sp)) {
