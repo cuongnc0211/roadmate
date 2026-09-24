@@ -493,6 +493,13 @@ export type Database = {
       auth_is_trip_owner: { Args: { t_id: string }; Returns: boolean }
       cancel_trip: { Args: { p_trip_id: string }; Returns: undefined }
       decline_request: { Args: { p_request_id: string }; Returns: undefined }
+      fill_rate_stats: {
+        Args: never
+        Returns: {
+          trips_matched: number
+          trips_total: number
+        }[]
+      }
       withdraw_request: { Args: { p_request_id: string }; Returns: undefined }
     }
     Enums: {

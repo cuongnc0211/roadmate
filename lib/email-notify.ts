@@ -20,6 +20,7 @@ export async function emailUser(
       .select("email_notifications")
       .eq("id", userId)
       .maybeSingle();
+    // Missing profile row → treat as opted-in (send). Only an explicit false skips.
     if (prof && prof.email_notifications === false) return;
 
     const { data } = await admin.auth.admin.getUserById(userId);

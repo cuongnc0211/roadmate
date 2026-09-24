@@ -13,6 +13,9 @@ const beVietnamPro = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  ),
   title: {
     default: "RoadMate — Ghép chuyến Hoà Lạc ↔ Hà Nội",
     template: "%s · RoadMate",

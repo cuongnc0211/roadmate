@@ -39,22 +39,13 @@ export type FillRate = {
  */
 export async function getFillRate(): Promise<FillRate> {
   const admin = createAdminClient();
-
-  const { count: tripsTotal } = await admin
-    .from("trips")
-    .select("id", { count: "exact", head: true })
-    .neq("status", "cancelled");
-
-  const { data: acceptedRows } = await admin
-    .from("trip_requests")
-    .select("trip_id")
-    .eq("status", "accepted");
-
-  const matched = new Set((acceptedRows ?? []).map((r) => r.trip_id));
-  const total = tripsTotal ?? 0;
+  // Single SQL aggregate: numerator + denominator share the status filter.
+  const { data } = await admin.rpc("fill_rate_stats").maybeSingle();
+  const total = Number(data?.trips_total ?? 0);
+  const matched = Number(data?.trips_matched ?? 0);
   return {
     tripsTotal: total,
-    tripsMatched: matched.size,
-    fillRate: total > 0 ? matched.size / total : 0,
+    tripsMatched: matched,
+    fillRate: total > 0 ? matched / total : 0,
   };
 }

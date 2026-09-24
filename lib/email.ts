@@ -23,23 +23,30 @@ export async function sendEmail({ to, subject, text, html }: SendArgs) {
     return { dev: true as const };
   }
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: process.env.EMAIL_FROM ?? "RoadMate <onboarding@resend.dev>",
-      to,
-      subject,
-      text,
-      ...(html ? { html } : {}),
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Resend send failed: ${res.status}`);
+  // Bound the request so a slow provider can't stall the user-facing action.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: process.env.EMAIL_FROM ?? "RoadMate <onboarding@resend.dev>",
+        to,
+        subject,
+        text,
+        ...(html ? { html } : {}),
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`Resend send failed: ${res.status}`);
+    }
+    return res.json();
+  } finally {
+    clearTimeout(timeout);
   }
-  return res.json();
 }
