@@ -62,9 +62,10 @@ export function OwnedTripCard({ trip }: { trip: OwnedTrip }) {
         </p>
       </div>
 
-      {(pending.length > 0 || accepted.length > 0) && (
+      {((active && pending.length > 0) || accepted.length > 0) && (
         <div className="space-y-2 border-t border-border bg-surface-2 p-3.5">
-          {pending.map((r) => (
+          {active &&
+            pending.map((r) => (
             <div key={r.id} className="flex items-center gap-2">
               <RequesterName
                 name={r.requester?.name ?? "Ẩn danh"}

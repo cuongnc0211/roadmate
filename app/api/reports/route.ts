@@ -30,12 +30,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "self_report" }, { status: 400 });
   }
 
-  const participants = await getTripParticipants(supabase, tripId);
+  const participants = await getTripParticipants(tripId);
   if (!participants) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
   if (!participants.members.has(user.id)) {
     return NextResponse.json({ error: "not_member" }, { status: 403 });
+  }
+  // The reported user must also be a member of the same trip.
+  if (!participants.members.has(reportedId)) {
+    return NextResponse.json({ error: "reported_not_member" }, { status: 403 });
   }
 
   // reports_insert_self RLS enforces reporter_id = auth.uid().

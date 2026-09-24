@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "self_review" }, { status: 400 });
   }
 
-  const participants = await getTripParticipants(supabase, tripId);
+  const participants = await getTripParticipants(tripId);
   if (!participants) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }

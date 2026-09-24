@@ -1,7 +1,6 @@
 import "server-only";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/lib/db/types";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export type TripParticipants = {
   creatorId: string;
@@ -10,19 +9,25 @@ export type TripParticipants = {
   members: Set<string>;
 };
 
-/** Members of a trip = owner + accepted passengers. null if trip not visible. */
+/**
+ * Members of a trip = owner + accepted passengers.
+ * Reads via the service-role client so the membership set is COMPLETE
+ * regardless of who asks (a passenger's RLS can't see other passengers'
+ * requests). Callers must still verify the actor is in `members`.
+ */
 export async function getTripParticipants(
-  supabase: SupabaseClient<Database>,
   tripId: string,
 ): Promise<TripParticipants | null> {
-  const { data: trip } = await supabase
+  const admin = createAdminClient();
+
+  const { data: trip } = await admin
     .from("trips")
     .select("creator_id, status")
     .eq("id", tripId)
     .maybeSingle();
   if (!trip) return null;
 
-  const { data: accepted } = await supabase
+  const { data: accepted } = await admin
     .from("trip_requests")
     .select("requester_id")
     .eq("trip_id", tripId)
