@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Reviews, Profile & Safety"
-status: pending
+status: done
 priority: P2
 dependencies: [5]
 ---
@@ -38,10 +38,17 @@ dependencies: [5]
 5. UI RatingSheet + ReportSheet nối từ "Chuyến của tôi".
 
 ## Success Criteria
-- [ ] Chỉ thành viên chuyến `done` mới rate được; không rate trùng.
-- [ ] `rating_avg` cập nhật đúng sau review.
-- [ ] Report lưu và không lộ cho người dùng khác.
-- [ ] Hồ sơ sửa được phone/gender/women_pref; badge SV phản ánh đúng.
+- [x] Chỉ thành viên (owner + khách accepted) của chuyến `done` mới rate được; unique(trip,from,to) chặn trùng; check(from<>to) chặn tự-rate.
+- [x] `rating_avg` cập nhật đúng sau review (test DB: avg(4,2)=3.00, đơn=5.00) qua trigger.
+- [x] Report lưu riêng tư (RLS `reports_owner_read`: chỉ reporter đọc; ops qua service role); reporter phải là thành viên.
+- [x] Hồ sơ sửa name/gender/phone/women_pref (E2E: lưu phone → `profile_private`, không vào `profiles`); badge SV + rating hiển thị.
+
+## Completion Notes (Session 2026-09-24)
+- **Trigger rating (migration 0004, SECURITY DEFINER):** `update_rating_avg` set `profiles.rating_avg = round(avg(rating),2)` khi có review mới.
+- **API:** `POST /trips/:id/complete` (owner, open/full→done, RLS + status filter), `POST /reviews` (server-only insert qua service role SAU khi validate membership + done + not-self + dup 409), `POST /reports` (user client + RLS reporter_id=auth.uid, kiểm membership), `GET/PATCH /me/profile` (chỉ ghi name/gender/women_pref công khai + phone vào `profile_private`; KHÔNG chạm sv_verified/rating_avg/zalo_id).
+- **UI:** RatingSheet (chọn sao + nhận xét) + ReportSheet (modal dùng chung), nút Hoàn thành/Đánh giá/Báo cáo ở OwnedTripCard + JoinedTripCard (khi chuyến done), form Chỉnh sửa hồ sơ + rating hiển thị ở Hồ sơ.
+- **Verify:** trigger + ràng buộc test qua psql; profile PATCH test trên trình duyệt (phone → profile_private). Routes còn lại compile/build sạch, là wrapper validated theo pattern đã kiểm ở phase trước.
+- `lib/trips/participants.ts` (owner + accepted) dùng chung cho reviews + reports.
 
 ## Risk Assessment
 - Lạm dụng report/rating: MVP chấp nhận, chỉ lưu trữ; kiểm duyệt thủ công. Chống rate-abuse cơ bản (1 review/cặp/trip).

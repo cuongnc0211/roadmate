@@ -7,6 +7,8 @@ import { toast } from "sonner";
 
 import { RouteLine } from "@/components/board/route-line";
 import { ContactReveal } from "@/components/mine/contact-reveal";
+import { RatingSheet } from "@/components/rating/rating-sheet";
+import { ReportSheet } from "@/components/report/report-sheet";
 import { Button } from "@/components/ui/button";
 import { formatVnd } from "@/lib/format";
 import type { OwnedTrip } from "@/lib/trips/mine";
@@ -94,17 +96,48 @@ export function OwnedTripCard({ trip }: { trip: OwnedTrip }) {
                 name={r.requester?.name ?? "Ẩn danh"}
                 sv={r.requester?.sv_verified ?? false}
               />
-              <span className="text-xs font-semibold text-primary">Đã duyệt</span>
-              <div className="ml-auto">
-                <ContactReveal requestId={r.id} />
-              </div>
+              {trip.status === "done" ? (
+                <div className="ml-auto flex items-center gap-2">
+                  {r.requester ? (
+                    <>
+                      <RatingSheet
+                        tripId={trip.id}
+                        toUser={r.requester.id}
+                        toName={r.requester.name}
+                      />
+                      <ReportSheet
+                        tripId={trip.id}
+                        reportedId={r.requester.id}
+                        reportedName={r.requester.name}
+                      />
+                    </>
+                  ) : null}
+                </div>
+              ) : (
+                <>
+                  <span className="text-xs font-semibold text-primary">
+                    Đã duyệt
+                  </span>
+                  <div className="ml-auto">
+                    <ContactReveal requestId={r.id} />
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
       )}
 
       {active && (
-        <div className="border-t border-border p-3.5">
+        <div className="flex gap-2 border-t border-border p-3.5">
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={busy}
+            onClick={() => act(`/api/trips/${trip.id}/complete`, "Đã hoàn thành chuyến")}
+          >
+            Hoàn thành
+          </Button>
           <Button
             size="sm"
             variant="danger"

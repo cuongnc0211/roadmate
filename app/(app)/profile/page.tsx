@@ -7,11 +7,18 @@ export const metadata = { title: "Hồ sơ" };
 export default async function ProfilePage() {
   const user = await requireUser();
   const supabase = await createClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("name, sv_verified")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, { data: priv }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("name, gender, women_pref, sv_verified, rating_avg")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("profile_private")
+      .select("phone")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   return (
     <section>
@@ -19,9 +26,15 @@ export default async function ProfilePage() {
         Hồ sơ
       </h1>
       <ProfilePanel
-        name={profile?.name ?? "Người dùng"}
         email={user.email ?? ""}
-        svVerified={profile?.sv_verified ?? false}
+        initial={{
+          name: profile?.name ?? "Người dùng",
+          gender: profile?.gender ?? null,
+          womenPref: profile?.women_pref ?? false,
+          svVerified: profile?.sv_verified ?? false,
+          ratingAvg: profile?.rating_avg ?? 0,
+          phone: priv?.phone ?? null,
+        }}
       />
     </section>
   );

@@ -30,8 +30,8 @@ Next.js (App Router, TS) · Supabase (Postgres/Auth/RLS/Realtime/Storage) · Tai
 | 03 | [Auth (Zalo + Email Badge)](phase-03-auth-zalo-email-badge.md) | P1 | 01, 02 | ✅ done (2026-09-23, Zalo deferred) |
 | 04 | [Trip Board & Create](phase-04-trip-board-create.md) | P1 | 02, 03 | ✅ done (2026-09-23) |
 | 05 | [Requests & Notifications](phase-05-requests-notifications.md) | P1 | 04 | ✅ done (2026-09-24) |
-| 06 | [Reviews, Profile & Safety](phase-06-reviews-profile-safety.md) | P2 | 05 | pending (next) |
-| 07 | [PWA, Deploy & Launch](phase-07-pwa-deploy-launch.md) | P2 | 04, 05, 06 | pending |
+| 06 | [Reviews, Profile & Safety](phase-06-reviews-profile-safety.md) | P2 | 05 | ✅ done (2026-09-24) |
+| 07 | [PWA, Deploy & Launch](phase-07-pwa-deploy-launch.md) | P2 | 04, 05, 06 | pending (next) |
 
 ## Acceptance criteria (MVP)
 - Người dùng đăng nhập bằng **email magic link** (Supabase native); Zalo OAuth thêm ở bản sau.

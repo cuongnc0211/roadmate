@@ -6,6 +6,8 @@ import { toast } from "sonner";
 
 import { RouteLine } from "@/components/board/route-line";
 import { ContactReveal } from "@/components/mine/contact-reveal";
+import { RatingSheet } from "@/components/rating/rating-sheet";
+import { ReportSheet } from "@/components/report/report-sheet";
 import { Button } from "@/components/ui/button";
 import { formatVnd } from "@/lib/format";
 import type { JoinedRequest } from "@/lib/trips/mine";
@@ -65,7 +67,21 @@ export function JoinedTripCard({ req }: { req: JoinedRequest }) {
         </p>
       </div>
 
-      {!tripCancelled && (req.status === "pending" || req.status === "accepted") && (
+      {trip.status === "done" && req.status === "accepted" && trip.creator ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-border bg-surface-2 p-3.5">
+          <RatingSheet
+            tripId={trip.id}
+            toUser={trip.creator.id}
+            toName={trip.creator.name}
+          />
+          <ReportSheet
+            tripId={trip.id}
+            reportedId={trip.creator.id}
+            reportedName={trip.creator.name}
+          />
+        </div>
+      ) : !tripCancelled &&
+        (req.status === "pending" || req.status === "accepted") ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-border bg-surface-2 p-3.5">
           {req.status === "accepted" ? <ContactReveal requestId={req.id} /> : null}
           <div className="ml-auto">
@@ -74,7 +90,7 @@ export function JoinedTripCard({ req }: { req: JoinedRequest }) {
             </Button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
