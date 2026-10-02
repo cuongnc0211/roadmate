@@ -1,25 +1,23 @@
 import { NextResponse } from "next/server";
 
 import { logEvent } from "@/lib/analytics";
+import { getSessionUser } from "@/lib/auth/session";
+import { query, queryOne } from "@/lib/db";
 import { dirFromZone, type Zone } from "@/lib/points";
 import { createTripSchema } from "@/lib/trips/schema";
 import { fetchTrips, parseTripFilters } from "@/lib/trips/query";
 import { vnLocalToIso } from "@/lib/trips/time";
-import { createClient } from "@/lib/supabase/server";
 
 /** GET /api/trips — board list with filters. Never returns phone. */
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   const filters = parseTripFilters(new URL(request.url).searchParams);
   try {
-    const trips = await fetchTrips(supabase, filters);
+    const trips = await fetchTrips(filters);
     return NextResponse.json({ trips });
   } catch (err) {
     console.error("[trips] list failed:", err);
@@ -29,10 +27,7 @@ export async function GET(request: Request) {
 
 /** POST /api/trips — create a trip. Soft gate: login only, no SV badge. */
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -47,12 +42,12 @@ export async function POST(request: Request) {
   const input = parsed.data;
 
   // Resolve both points to derive direction and enforce cross-zone.
-  const { data: pts } = await supabase
-    .from("points")
-    .select("id, zone")
-    .in("id", [input.fromPointId, input.toPointId]);
-  const from = pts?.find((p) => p.id === input.fromPointId);
-  const to = pts?.find((p) => p.id === input.toPointId);
+  const pts = await query<{ id: string; zone: Zone }>(
+    "select id, zone from points where id = any($1::uuid[])",
+    [[input.fromPointId, input.toPointId]],
+  );
+  const from = pts.find((p) => p.id === input.fromPointId);
+  const to = pts.find((p) => p.id === input.toPointId);
   if (!from || !to) {
     return NextResponse.json({ error: "invalid_points" }, { status: 400 });
   }
@@ -65,26 +60,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_depart_at" }, { status: 400 });
   }
 
-  const { data: trip, error } = await supabase
-    .from("trips")
-    .insert({
-      creator_id: user.id,
-      type: input.type,
-      dir: dirFromZone(from.zone as Zone),
-      from_point_id: input.fromPointId,
-      to_point_id: input.toPointId,
-      pickup_note: input.pickupNote || null,
-      depart_at: departIso,
-      seats_total: input.seatsTotal,
-      seats_left: input.seatsTotal,
-      price_per_person: input.pricePerPerson,
-      women_only: input.womenOnly,
-    })
-    .select("id")
-    .single();
-
-  if (error || !trip) {
-    console.error("[trips] create failed:", error);
+  let trip: { id: string } | null;
+  try {
+    trip = await queryOne<{ id: string }>(
+      `insert into trips (creator_id, type, dir, from_point_id, to_point_id,
+                          pickup_note, depart_at, seats_total, seats_left,
+                          price_per_person, women_only)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10)
+       returning id`,
+      [
+        user.id,
+        input.type,
+        dirFromZone(from.zone),
+        input.fromPointId,
+        input.toPointId,
+        input.pickupNote || null,
+        departIso,
+        input.seatsTotal,
+        input.pricePerPerson,
+        input.womenOnly,
+      ],
+    );
+  } catch (err) {
+    console.error("[trips] create failed:", err);
+    trip = null;
+  }
+  if (!trip) {
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 

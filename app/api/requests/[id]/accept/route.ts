@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { logEvent } from "@/lib/analytics";
+import { getSessionUser } from "@/lib/auth/session";
+import { queryOne } from "@/lib/db";
 import { emailUser } from "@/lib/email-notify";
-import { rpcErrorStatus } from "@/lib/requests";
-import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { callLifecycleRpc } from "@/lib/requests";
 
 /** POST /api/requests/:id/accept — owner accepts (atomic seat decrement). */
 export async function POST(
@@ -11,28 +12,18 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const { error } = await supabase.rpc("accept_request", { p_request_id: id });
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: rpcErrorStatus(error.message) },
-    );
-  }
+  const failed = await callLifecycleRpc("accept_request", user.id, id);
+  if (failed) return failed;
 
-  const admin = createAdminClient();
-  const { data: req } = await admin
-    .from("trip_requests")
-    .select("requester_id, trip_id")
-    .eq("id", id)
-    .maybeSingle();
+  const req = await queryOne<{ requester_id: string; trip_id: string }>(
+    "select requester_id, trip_id from trip_requests where id = $1",
+    [id],
+  );
   if (req) {
     await logEvent("request_accepted", {
       userId: req.requester_id,

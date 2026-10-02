@@ -1,17 +1,12 @@
 import { CreateTripForm } from "@/components/create/create-trip-form";
-import type { Point } from "@/lib/points";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth/guards";
+import { fetchPoints } from "@/lib/trips/query";
 
 export const metadata = { title: "Đăng chuyến" };
 
 export default async function CreatePage() {
-  // Auth is enforced by middleware; points are public reference data.
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("points")
-    .select("id, name, zone, sort")
-    .order("sort");
-  const points = (data ?? []) as Point[];
+  await requireUser();
+  const points = await fetchPoints();
 
   return (
     <section>

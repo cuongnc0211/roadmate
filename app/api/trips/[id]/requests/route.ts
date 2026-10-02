@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { logEvent } from "@/lib/analytics";
+import { getSessionUser } from "@/lib/auth/session";
+import { isUuid, pgErrorCode, query, queryOne } from "@/lib/db";
 import { emailUser } from "@/lib/email-notify";
-import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 /** POST /api/trips/:id/requests — ask to join. Soft gate: login only. */
 export async function POST(
@@ -10,19 +11,19 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: tripId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  if (!isUuid(tripId)) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
 
-  const { data: trip } = await supabase
-    .from("trips")
-    .select("id, creator_id, status, women_only")
-    .eq("id", tripId)
-    .maybeSingle();
+  const trip = await queryOne<{
+    creator_id: string;
+    status: string;
+    women_only: boolean;
+  }>("select creator_id, status, women_only from trips where id = $1", [tripId]);
   if (!trip) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
@@ -34,38 +35,35 @@ export async function POST(
   }
 
   if (trip.women_only) {
-    const { data: me } = await supabase
-      .from("profiles")
-      .select("gender")
-      .eq("id", user.id)
-      .maybeSingle();
+    const me = await queryOne<{ gender: string | null }>(
+      "select gender from profiles where id = $1",
+      [user.id],
+    );
     if (me?.gender !== "female") {
       return NextResponse.json({ error: "women_only" }, { status: 403 });
     }
   }
 
-  const { data: created, error } = await supabase
-    .from("trip_requests")
-    .insert({ trip_id: tripId, requester_id: user.id })
-    .select("id")
-    .single();
-
-  if (error) {
+  let created: { id: string } | null;
+  try {
+    created = await queryOne<{ id: string }>(
+      `insert into trip_requests (trip_id, requester_id) values ($1, $2)
+       returning id`,
+      [tripId, user.id],
+    );
+    if (!created) throw new Error("insert returned no row");
+    await query(
+      "insert into notifications (user_id, type, payload) values ($1, 'new_request', $2)",
+      [trip.creator_id, { trip_id: tripId, request_id: created.id }],
+    );
+  } catch (err) {
     // 23505 = unique(trip_id, requester_id) → already requested.
-    if (error.code === "23505") {
+    if (pgErrorCode(err) === "23505") {
       return NextResponse.json({ error: "already_requested" }, { status: 409 });
     }
-    console.error("[requests] create failed:", error);
+    console.error("[requests] create failed:", err);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
-
-  // Notify the trip owner (notifications are server-only writes).
-  const admin = createAdminClient();
-  await admin.from("notifications").insert({
-    user_id: trip.creator_id,
-    type: "new_request",
-    payload: { trip_id: tripId, request_id: created.id },
-  });
 
   await logEvent("request_created", { userId: user.id, tripId });
   await emailUser(

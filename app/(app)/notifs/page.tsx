@@ -2,22 +2,25 @@ import Link from "next/link";
 
 import { MarkReadOnView } from "@/components/notifs/mark-read-on-view";
 import { requireUser } from "@/lib/auth/guards";
+import { query } from "@/lib/db";
+import type { Json } from "@/lib/db/types";
 import { notificationMessage, timeAgo } from "@/lib/notifications-format";
-import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Thông báo" };
 
 export default async function NotifsPage() {
   const user = await requireUser();
-  const supabase = await createClient();
-  const { data: notifs } = await supabase
-    .from("notifications")
-    .select("id, type, payload, read, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  const list = notifs ?? [];
+  const list = await query<{
+    id: string;
+    type: string;
+    payload: Json;
+    read: boolean;
+    created_at: string;
+  }>(
+    `select id, type, payload, read, created_at from notifications
+      where user_id = $1 order by created_at desc limit 50`,
+    [user.id],
+  );
 
   return (
     <section>

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getSessionUser } from "@/lib/auth/session";
+import { query } from "@/lib/db";
 import { getTripParticipants } from "@/lib/trips/participants";
-import { createClient } from "@/lib/supabase/server";
 
 const schema = z.object({
   tripId: z.string().uuid(),
@@ -13,10 +14,7 @@ const schema = z.object({
 
 /** POST /api/reports — report a co-member. Stored privately for ops. */
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -42,15 +40,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "reported_not_member" }, { status: 403 });
   }
 
-  // reports_insert_self RLS enforces reporter_id = auth.uid().
-  const { error } = await supabase.from("reports").insert({
-    trip_id: tripId,
-    reporter_id: user.id,
-    reported_id: reportedId,
-    reason,
-    detail: detail || null,
-  });
-  if (error) {
+  try {
+    await query(
+      `insert into reports (trip_id, reporter_id, reported_id, reason, detail)
+       values ($1, $2, $3, $4, $5)`,
+      [tripId, user.id, reportedId, reason, detail || null],
+    );
+  } catch (err) {
+    console.error("[reports] insert failed:", err);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
   return NextResponse.json({ ok: true }, { status: 201 });

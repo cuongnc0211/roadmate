@@ -1,33 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import type { Database } from "@/lib/db/types";
-import { createClient } from "@/lib/supabase/server";
-
-type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
+import { getSessionUser } from "@/lib/auth/session";
+import { query, queryOne } from "@/lib/db";
+import { getMyProfile } from "@/lib/profile";
 
 /** GET /api/me/profile — the caller's editable profile + private phone. */
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const [{ data: profile }, { data: priv }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("name, gender, women_pref, sv_verified, rating_avg, email_notifications")
-      .eq("id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("profile_private")
-      .select("phone")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
-  return NextResponse.json({ ...profile, phone: priv?.phone ?? null });
+  return NextResponse.json(await getMyProfile(user.id));
 }
 
 const patchSchema = z.object({
@@ -40,10 +24,7 @@ const patchSchema = z.object({
 
 /** PATCH /api/me/profile — update name/gender/women_pref (public) + phone (private). */
 export async function PATCH(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -54,31 +35,37 @@ export async function PATCH(request: Request) {
   }
   const { name, gender, womenPref, emailNotifications, phone } = parsed.data;
 
-  // Only client-writable columns (column grant blocks the rest).
-  const profilePatch: ProfileUpdate = {};
-  if (name !== undefined) profilePatch.name = name;
-  if (gender !== undefined) profilePatch.gender = gender;
-  if (womenPref !== undefined) profilePatch.women_pref = womenPref;
-  if (emailNotifications !== undefined)
-    profilePatch.email_notifications = emailNotifications;
+  // Only user-editable columns — sv_verified / rating_avg / zalo_id are
+  // server-managed and deliberately not reachable from here.
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  const set = (column: string, value: unknown) => {
+    values.push(value);
+    sets.push(`${column} = $${values.length}`);
+  };
+  if (name !== undefined) set("name", name);
+  if (gender !== undefined) set("gender", gender);
+  if (womenPref !== undefined) set("women_pref", womenPref);
+  if (emailNotifications !== undefined) set("email_notifications", emailNotifications);
 
-  if (Object.keys(profilePatch).length > 0) {
-    const { error } = await supabase
-      .from("profiles")
-      .update(profilePatch)
-      .eq("id", user.id);
-    if (error) {
-      return NextResponse.json({ error: "server_error" }, { status: 500 });
+  try {
+    if (sets.length > 0) {
+      values.push(user.id);
+      await query(
+        `update profiles set ${sets.join(", ")} where id = $${values.length}`,
+        values,
+      );
     }
-  }
-
-  if (phone !== undefined) {
-    const { error } = await supabase
-      .from("profile_private")
-      .upsert({ user_id: user.id, phone });
-    if (error) {
-      return NextResponse.json({ error: "server_error" }, { status: 500 });
+    if (phone !== undefined) {
+      await queryOne(
+        `insert into profile_private (user_id, phone) values ($1, $2)
+         on conflict (user_id) do update set phone = excluded.phone`,
+        [user.id, phone],
+      );
     }
+  } catch (err) {
+    console.error("[me/profile] update failed:", err);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

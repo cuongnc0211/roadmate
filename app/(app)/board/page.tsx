@@ -3,9 +3,8 @@ import { PlusCircle } from "lucide-react";
 
 import { BoardFilters } from "@/components/board/board-filters";
 import { TripCard } from "@/components/board/trip-card";
-import type { Point } from "@/lib/points";
-import { fetchTrips, parseTripFilters } from "@/lib/trips/query";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth/guards";
+import { fetchPoints, fetchTrips, parseTripFilters } from "@/lib/trips/query";
 
 export const metadata = { title: "Bảng tin" };
 
@@ -16,7 +15,8 @@ export default async function BoardPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  // Auth is enforced by middleware; no per-render getUser needed here.
+  // Middleware only checks the cookie exists; validate the session here.
+  await requireUser();
   const sp = await searchParams;
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(sp)) {
@@ -24,12 +24,10 @@ export default async function BoardPage({
   }
   const filters = parseTripFilters(usp);
 
-  const supabase = await createClient();
-  const [{ data: pointsData }, trips] = await Promise.all([
-    supabase.from("points").select("id, name, zone, sort").order("sort"),
-    fetchTrips(supabase, filters),
+  const [points, trips] = await Promise.all([
+    fetchPoints(),
+    fetchTrips(filters),
   ]);
-  const points = (pointsData ?? []) as Point[];
 
   return (
     <section>

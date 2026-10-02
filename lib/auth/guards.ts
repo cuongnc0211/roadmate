@@ -1,20 +1,16 @@
 import "server-only";
 import { redirect } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
 
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser, type SessionUser } from "@/lib/auth/session";
+import { queryOne } from "@/lib/db";
 
 /** Current user or null (no redirect). */
-export async function getUser(): Promise<User | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+export async function getUser(): Promise<SessionUser | null> {
+  return getSessionUser();
 }
 
 /** Current user, or redirect to /login. Use in Server Components/Route Handlers. */
-export async function requireUser(): Promise<User> {
+export async function requireUser(): Promise<SessionUser> {
   const user = await getUser();
   if (!user) redirect("/login");
   return user;
@@ -22,13 +18,11 @@ export async function requireUser(): Promise<User> {
 
 /** Soft SV badge status for a user (does NOT gate access — Validation #3). */
 export async function getSvStatus(userId: string): Promise<boolean> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("profiles")
-    .select("sv_verified")
-    .eq("id", userId)
-    .maybeSingle();
-  return data?.sv_verified ?? false;
+  const row = await queryOne<{ sv_verified: boolean }>(
+    "select sv_verified from profiles where id = $1",
+    [userId],
+  );
+  return row?.sv_verified ?? false;
 }
 
 /**

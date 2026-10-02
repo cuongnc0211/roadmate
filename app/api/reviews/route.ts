@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getSessionUser } from "@/lib/auth/session";
+import { pgErrorCode, query } from "@/lib/db";
 import { getTripParticipants } from "@/lib/trips/participants";
-import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 const schema = z.object({
   tripId: z.string().uuid(),
@@ -13,10 +14,7 @@ const schema = z.object({
 
 /** POST /api/reviews — rate a co-member of a completed trip (once per pair). */
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -41,19 +39,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "not_member" }, { status: 403 });
   }
 
-  // reviews are server-only (see 0001_init.sql H3); insert via service role.
-  const admin = createAdminClient();
-  const { error } = await admin.from("reviews").insert({
-    trip_id: tripId,
-    from_user: user.id,
-    to_user: toUser,
-    rating,
-    comment: comment || null,
-  });
-  if (error) {
-    if (error.code === "23505") {
+  try {
+    // rating_avg is kept in sync by the on_review_insert trigger.
+    await query(
+      `insert into reviews (trip_id, from_user, to_user, rating, comment)
+       values ($1, $2, $3, $4, $5)`,
+      [tripId, user.id, toUser, rating, comment || null],
+    );
+  } catch (err) {
+    if (pgErrorCode(err) === "23505") {
       return NextResponse.json({ error: "already_reviewed" }, { status: 409 });
     }
+    console.error("[reviews] insert failed:", err);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
   return NextResponse.json({ ok: true }, { status: 201 });

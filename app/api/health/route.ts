@@ -1,36 +1,17 @@
 import { NextResponse } from "next/server";
 
-/**
- * Health check — verifies the app can reach Supabase.
- * Pings the Supabase REST root with the anon key (no tables required yet).
- */
+import { query } from "@/lib/db";
+
+/** Health check — verifies the app can reach Postgres (Railway healthcheck). */
 export async function GET() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anon) {
-    return NextResponse.json(
-      { ok: false, error: "Missing Supabase env vars" },
-      { status: 500 },
-    );
-  }
-
   try {
-    // Hit the auth settings endpoint: 200 with a valid apikey on both the local
-    // stack and Supabase cloud (the REST root is anon-forbidden on cloud).
-    const res = await fetch(`${url}/auth/v1/settings`, {
-      headers: { apikey: anon },
-      cache: "no-store",
-    });
-    return NextResponse.json(
-      { ok: res.ok, supabase: url, status: res.status },
-      { status: res.ok ? 200 : 503 },
-    );
+    await query("select 1");
+    return NextResponse.json({ ok: true });
   } catch (err) {
     // Log detail server-side; return a generic message to the caller.
-    console.error("[health] Supabase unreachable:", err);
+    console.error("[health] database unreachable:", err);
     return NextResponse.json(
-      { ok: false, error: "Supabase unreachable" },
+      { ok: false, error: "Database unreachable" },
       { status: 503 },
     );
   }

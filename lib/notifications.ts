@@ -1,14 +1,16 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { queryOne } from "@/lib/db";
 
 /** Count unread notifications for a user (0 on any error). */
 export async function getUnreadCount(userId: string): Promise<number> {
-  const supabase = await createClient();
-  const { count } = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("read", false);
-  return count ?? 0;
+  try {
+    const row = await queryOne<{ count: number }>(
+      "select count(*) from notifications where user_id = $1 and not read",
+      [userId],
+    );
+    return row?.count ?? 0;
+  } catch {
+    return 0;
+  }
 }

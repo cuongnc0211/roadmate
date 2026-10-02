@@ -1,7 +1,7 @@
 import "server-only";
 
+import { query, queryOne } from "@/lib/db";
 import type { Json } from "@/lib/db/types";
-import { createAdminClient } from "@/lib/supabase/server";
 
 export type EventType =
   | "trip_created"
@@ -15,13 +15,10 @@ export async function logEvent(
   opts?: { userId?: string; tripId?: string; payload?: Json },
 ): Promise<void> {
   try {
-    const admin = createAdminClient();
-    await admin.from("events").insert({
-      type,
-      user_id: opts?.userId ?? null,
-      trip_id: opts?.tripId ?? null,
-      payload: opts?.payload ?? {},
-    });
+    await query(
+      "insert into events (type, user_id, trip_id, payload) values ($1, $2, $3, $4)",
+      [type, opts?.userId ?? null, opts?.tripId ?? null, opts?.payload ?? {}],
+    );
   } catch (err) {
     console.error("[analytics] logEvent failed:", err);
   }
@@ -35,14 +32,22 @@ export type FillRate = {
 
 /**
  * Fill rate = share of non-cancelled trips that got ≥1 accepted request.
- * The core liquidity metric (see CLAUDE.md — not DAU).
+ * The core liquidity metric (see CLAUDE.md — not DAU). Numerator and
+ * denominator share the same status filter.
  */
 export async function getFillRate(): Promise<FillRate> {
-  const admin = createAdminClient();
-  // Single SQL aggregate: numerator + denominator share the status filter.
-  const { data } = await admin.rpc("fill_rate_stats").maybeSingle();
-  const total = Number(data?.trips_total ?? 0);
-  const matched = Number(data?.trips_matched ?? 0);
+  const row = await queryOne<{ trips_total: number; trips_matched: number }>(
+    `select
+       count(*) filter (where t.status <> 'cancelled') as trips_total,
+       count(*) filter (
+         where t.status <> 'cancelled'
+           and exists (select 1 from trip_requests r
+                        where r.trip_id = t.id and r.status = 'accepted')
+       ) as trips_matched
+     from trips t`,
+  );
+  const total = row?.trips_total ?? 0;
+  const matched = row?.trips_matched ?? 0;
   return {
     tripsTotal: total,
     tripsMatched: matched,

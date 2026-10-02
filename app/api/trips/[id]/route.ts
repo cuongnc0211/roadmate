@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { getSessionUser } from "@/lib/auth/session";
 import { fetchTripById } from "@/lib/trips/query";
-import { createClient } from "@/lib/supabase/server";
 
 /** GET /api/trips/:id — trip detail. Never returns phone. */
 export async function GET(
@@ -9,16 +9,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   try {
-    const trip = await fetchTripById(supabase, id);
+    const trip = await fetchTripById(id, user.id);
     if (!trip) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }

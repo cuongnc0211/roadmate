@@ -1,8 +1,21 @@
+import { redirect } from "next/navigation";
+
 import { LoginForm } from "@/components/auth/login-form";
+import { getUser } from "@/lib/auth/guards";
+import { safeNextPath } from "@/lib/auth/next-path";
 
 export const metadata = { title: "Đăng nhập" };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | string[] }>;
+}) {
+  const { next } = await searchParams;
+  const nextPath = safeNextPath(typeof next === "string" ? next : null);
+  // Validated here (not in middleware) so a stale cookie can't loop redirects.
+  if (await getUser()) redirect(nextPath);
+
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-ground px-6">
       <div className="w-full max-w-[400px]">
@@ -19,9 +32,9 @@ export default function LoginPage() {
             Ghép chuyến Hoà Lạc ↔ Hà Nội — chia sẻ chi phí, đi cùng người tin cậy.
           </p>
         </div>
-        <LoginForm />
+        <LoginForm next={nextPath} />
         <p className="mt-6 text-center text-xs text-ink-3">
-          Bằng việc đăng nhập, bạn đồng ý với{" "}
+          Bằng việc đăng nhập hoặc đăng ký, bạn đồng ý với{" "}
           <a href="/legal/terms" className="font-semibold text-primary">
             Điều khoản
           </a>{" "}

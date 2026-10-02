@@ -2,14 +2,12 @@ import { JoinedTripCard } from "@/components/mine/joined-trip-card";
 import { OwnedTripCard } from "@/components/mine/owned-trip-card";
 import { requireUser } from "@/lib/auth/guards";
 import { fetchMyTrips } from "@/lib/trips/mine";
-import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Chuyến của tôi" };
 
 export default async function MinePage() {
   const user = await requireUser();
-  const supabase = await createClient();
-  const { owned, joined } = await fetchMyTrips(supabase, user.id);
+  const { owned, joined } = await fetchMyTrips(user.id);
 
   return (
     <section className="space-y-6">

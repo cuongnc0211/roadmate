@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 
+import { getSessionUser } from "@/lib/auth/session";
 import { OTP_MAX_ATTEMPTS, hashOtp } from "@/lib/auth/sv";
-import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { query, queryOne, transaction } from "@/lib/db";
 
-/** Confirm the OTP → set the soft SV badge (server-side, service role). */
+/** Confirm the OTP → set the soft SV badge. */
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -21,16 +19,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_code" }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-  const { data: row } = await admin
-    .from("sv_verifications")
-    .select("*")
-    .eq("user_id", user.id)
-    .is("consumed_at", null)
-    .gt("expires_at", new Date().toISOString())
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const row = await queryOne<{
+    id: string;
+    email: string;
+    code_hash: string;
+    attempts: number;
+  }>(
+    `select id, email, code_hash, attempts from sv_verifications
+      where user_id = $1 and consumed_at is null and expires_at > now()
+      order by created_at desc limit 1`,
+    [user.id],
+  );
 
   if (!row) {
     return NextResponse.json({ error: "expired" }, { status: 400 });
@@ -41,14 +40,12 @@ export async function POST(request: Request) {
 
   if (hashOtp(code) !== row.code_hash) {
     // Atomic, cap-guarded increment so concurrent guesses can't exceed the cap.
-    const { data: bumped } = await admin
-      .from("sv_verifications")
-      .update({ attempts: row.attempts + 1 })
-      .eq("id", row.id)
-      .lt("attempts", OTP_MAX_ATTEMPTS)
-      .select("id")
-      .maybeSingle();
-    if (!bumped) {
+    const bumped = await query(
+      `update sv_verifications set attempts = attempts + 1
+        where id = $1 and attempts < $2 returning id`,
+      [row.id, OTP_MAX_ATTEMPTS],
+    );
+    if (bumped.length === 0) {
       return NextResponse.json(
         { error: "too_many_attempts" },
         { status: 429 },
@@ -57,20 +54,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "wrong_code" }, { status: 400 });
   }
 
-  // Correct code → consume it and grant the badge (service role bypasses the
-  // column grant that keeps sv_verified client-unwritable).
-  await admin
-    .from("sv_verifications")
-    .update({ consumed_at: new Date().toISOString() })
-    .eq("id", row.id);
-  await admin
-    .from("profiles")
-    .update({ sv_verified: true })
-    .eq("id", user.id);
-  await admin
-    .from("profile_private")
-    .update({ school_email: row.email })
-    .eq("user_id", user.id);
+  // Correct code → consume it (once) and grant the badge atomically.
+  const granted = await transaction(async (tx) => {
+    const consumed = await tx.query(
+      `update sv_verifications set consumed_at = now()
+        where id = $1 and consumed_at is null returning id`,
+      [row.id],
+    );
+    if (consumed.rowCount === 0) return false;
+    await tx.query("update profiles set sv_verified = true where id = $1", [user.id]);
+    await tx.query(
+      "update profile_private set school_email = $1 where user_id = $2",
+      [row.email, user.id],
+    );
+    return true;
+  });
+  if (!granted) {
+    return NextResponse.json({ error: "expired" }, { status: 400 });
+  }
 
   return NextResponse.json({ ok: true });
 }

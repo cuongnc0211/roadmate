@@ -7,7 +7,8 @@ Kế hoạch triển khai: [`plans/260923-roadmate-mvp-web/plan.md`](plans/26092
 ## Tech stack
 
 - **Next.js 15** (App Router, TypeScript) — UI + API layer (Route Handlers)
-- **Supabase** (Postgres + Auth + RLS + Realtime + Storage)
+- **PostgreSQL** (Railway in prod, Docker local) qua `pg` — SQL thuần, không ORM
+- **Auth tự viết:** email + mật khẩu (scrypt), session lưu trong Postgres, cookie httpOnly
 - **Tailwind CSS v4** + shadcn/ui-style components
 - **PWA** (`@ducanh2912/next-pwa`), mobile-first
 - **pnpm** (bắt buộc — không dùng npm/yarn/bun)
@@ -16,23 +17,23 @@ Kế hoạch triển khai: [`plans/260923-roadmate-mvp-web/plan.md`](plans/26092
 
 - Node ≥ 20 (repo test trên v22)
 - pnpm ≥ 10
-- Docker (cho Supabase local)
+- Docker (cho Postgres local)
 
 ## Chạy local
 
 ```bash
 pnpm install
 
-# 1) Supabase local (Docker). In ra URL + anon/service keys.
+# 1) Postgres local (Docker) + schema + dữ liệu điểm đón
+cp .env.example .env.local   # DATABASE_URL mặc định trỏ vào Docker
 pnpm db:start
-pnpm db:status        # copy URL + keys vào .env.local
+pnpm db:migrate && pnpm db:seed
 
 # 2) App
-cp .env.example .env.local   # điền các biến từ db:status
-pnpm dev                     # http://localhost:3000
+pnpm dev                     # http://localhost:3000 → Đăng ký bằng email + mật khẩu
 ```
 
-Health check: [`/api/health`](http://localhost:3000/api/health) — trả `{ ok: true }` khi kết nối được Supabase.
+Health check: [`/api/health`](http://localhost:3000/api/health) — trả `{ ok: true }` khi kết nối được Postgres.
 
 ## Biến môi trường
 
@@ -40,10 +41,10 @@ Xem [`.env.example`](.env.example). Tóm tắt:
 
 | Biến | Vị trí | Ghi chú |
 |------|--------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | client + server | URL project (local hoặc cloud) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client + server | Anon key (RLS áp dụng) |
-| `SUPABASE_SERVICE_ROLE_KEY` | **server-only** | Bypass RLS — chỉ dùng trong Route Handlers. KHÔNG để lộ ra client. |
-| `NEXT_PUBLIC_SITE_URL` | client + server | Base URL của app |
+| `DATABASE_URL` | **server-only** | Connection string Postgres. KHÔNG để lộ ra client. |
+| `NEXT_PUBLIC_SITE_URL` | client + server | Base URL của app (inline lúc build) |
+| `SV_EMAIL_DOMAINS` | server | Domain email trường cho badge SV |
+| `RESEND_API_KEY` / `EMAIL_FROM` | server | Gửi OTP badge SV + email thông báo (trống = log ra console) |
 
 > ⚠️ Không commit `.env.local` hay bất kỳ secret nào.
 
@@ -55,9 +56,10 @@ Xem [`.env.example`](.env.example). Tóm tắt:
 | `pnpm build` / `pnpm start` | Build + chạy production |
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm db:start` / `db:stop` / `db:status` | Supabase local (Docker) |
-| `pnpm db:reset` | Reset DB + chạy lại migrations/seed |
-| `pnpm db:types` | Gen TypeScript types từ schema → `lib/db/types.ts` |
+| `pnpm db:start` / `db:stop` | Postgres local (Docker, xem `docker-compose.yml`) |
+| `pnpm db:migrate` | Áp các file mới trong `db/migrations/` (Railway chạy tự động trước mỗi deploy) |
+| `pnpm db:seed` | Seed corridor + 12 điểm đón (idempotent) |
+| `pnpm db:reset` | Xoá sạch DB local + migrate + seed lại |
 
 ## Cấu trúc
 
@@ -65,7 +67,8 @@ Xem [`.env.example`](.env.example). Tóm tắt:
 app/
   (app)/            # shell mobile-first: TopBar + 5 tab + TabBar
     board/ create/ mine/ notifs/ profile/
-  api/health/       # health check kết nối Supabase
+  api/              # Route Handlers (auth, trips, requests, …)
+  api/health/       # health check kết nối Postgres
   layout.tsx        # root: fonts, theme, toaster
   manifest.ts       # PWA manifest
 components/
@@ -73,14 +76,16 @@ components/
   ui/               # button, switch, sonner (shadcn-style)
   theme-provider.tsx
 lib/
-  supabase/         # client (browser) + server/admin
+  db/               # pool `pg` (query/transaction) + row types
+  auth/             # password (scrypt), session, guards, rate limit
   utils.ts          # cn()
-supabase/           # config, migrations, seed (từ Phase 02)
+db/                 # migrations/*.sql + seed.sql
+scripts/db.mjs      # CLI migrate/seed
 ```
 
 ## Nguyên tắc kiến trúc
 
 - **API-first, client-agnostic:** business logic ở Route Handlers → Zalo Mini App (Phase 2) tái dùng nguyên API.
 - **Định danh key theo `zalo_id`** (nullable tới khi liên kết Zalo).
-- **RLS bật cho mọi bảng** (defense-in-depth).
+- **Không còn RLS:** mọi truy vấn chạy server-side; phân quyền nằm trong Route Handlers và các hàm SQL (`accept_request`, … nhận `p_uid` từ session). Thông tin nhạy cảm (SĐT, email trường) tách riêng ở `profile_private`.
 - **Không thanh toán in-app**; SĐT tự nhập, chỉ lộ sau khi được duyệt.

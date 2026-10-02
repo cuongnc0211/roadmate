@@ -37,6 +37,11 @@ SV mới lên Hòa Lạc (ĐHQG, HV Tài chính, FPTU…) và nhân viên KCN Ca
 | D7 | Định danh | Key user theo **`zalo_id`** | Web (Zalo OAuth) + Mini App (`getUserInfo`) → cùng 1 tài khoản, không vỡ dữ liệu |
 | D8 | Điểm đi/đến | **Điểm cố định (named points)**, KHÔNG free-text/geo | Thị trường mỏng: buckets thô → nhiều match hơn; né geocoding/Places API/khớp bán kính; tránh over-promise tuyến. Filter = 2 ô Từ/Đến (nhóm HL/HN). "Điểm đón cụ thể" = ghi chú, **không phải khoá match**. Mở rộng = thêm corridor + node; geo là tối ưu thị trường dày về sau |
 
+> **Cập nhật 2026-10 (thay D4, D6):** bỏ Supabase. Hosting + DB = **Railway** (Next.js + Postgres).
+> Auth = **email + mật khẩu tự viết** (scrypt, session trong Postgres), **không gửi email xác minh khi đăng ký**;
+> chưa có quên mật khẩu. Badge SV (OTP email trường) và email thông báo giữ nguyên qua Resend.
+> Xem [`plans/260924-railway-migration/plan.md`](../plans/260924-railway-migration/plan.md).
+
 ## 4. Các phương án đã cân nhắc
 
 **Cơ chế ghép (chọn A):**

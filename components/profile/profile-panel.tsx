@@ -2,11 +2,10 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, GraduationCap, LogOut, Star } from "lucide-react";
+import { BadgeCheck, GraduationCap, KeyRound, LogOut, Star } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
 
 type Gender = "male" | "female" | "other" | null;
 
@@ -154,12 +153,13 @@ export function ProfilePanel({
         <SvVerify onVerified={() => setVerified(true)} />
       )}
 
+      <ChangePassword />
+
       <Button
         variant="outline"
         block
         onClick={async () => {
-          const supabase = createClient();
-          await supabase.auth.signOut();
+          await fetch("/api/auth/logout", { method: "POST" });
           router.replace("/login");
           router.refresh();
         }}
@@ -187,6 +187,90 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <p className="mb-1.5 text-[12.5px] font-semibold text-ink-2">{label}</p>
       {children}
     </div>
+  );
+}
+
+const PASSWORD_ERRORS: Record<string, string> = {
+  wrong_password: "Mật khẩu hiện tại không đúng",
+  invalid_input: "Mật khẩu mới cần ít nhất 8 ký tự",
+  too_many_requests: "Thử quá nhiều lần. Vui lòng đợi ít phút.",
+};
+
+function ChangePassword() {
+  const [open, setOpen] = React.useState(false);
+  const [current, setCurrent] = React.useState("");
+  const [next, setNext] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (next.length < 8) {
+      toast.error("Mật khẩu mới cần ít nhất 8 ký tự");
+      return;
+    }
+    setLoading(true);
+    const res = await fetch("/api/me/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: current, newPassword: next }),
+    });
+    setLoading(false);
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: "" }));
+      toast.error(PASSWORD_ERRORS[error] ?? "Đổi mật khẩu thất bại");
+      return;
+    }
+    toast.success("Đã đổi mật khẩu. Các thiết bị khác đã bị đăng xuất.");
+    setCurrent("");
+    setNext("");
+    setOpen(false);
+  }
+
+  if (!open) {
+    return (
+      <Button variant="outline" block onClick={() => setOpen(true)}>
+        <KeyRound className="size-4" />
+        Đổi mật khẩu
+      </Button>
+    );
+  }
+
+  return (
+    <section className="rounded-[var(--r)] border border-border bg-surface p-4">
+      <h2 className="mb-3 font-bold text-ink">Đổi mật khẩu</h2>
+      <form onSubmit={submit} className="space-y-2">
+        <input
+          type="password"
+          autoComplete="current-password"
+          required
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+          placeholder="Mật khẩu hiện tại"
+          className={inputCls}
+        />
+        <input
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={8}
+          maxLength={128}
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          placeholder="Mật khẩu mới (ít nhất 8 ký tự)"
+          className={inputCls}
+        />
+        <Button type="submit" block disabled={loading}>
+          {loading ? "Đang lưu…" : "Lưu mật khẩu mới"}
+        </Button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="w-full text-center text-xs font-semibold text-ink-3"
+        >
+          Huỷ
+        </button>
+      </form>
+    </section>
   );
 }
 

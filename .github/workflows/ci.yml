@@ -8,6 +8,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: roadmate
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -22,14 +32,16 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Apply migrations + seed to a throwaway Postgres to catch SQL errors.
+      - run: pnpm db:migrate && pnpm db:seed
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/roadmate
+
       - run: pnpm lint
 
       - run: pnpm typecheck
 
       - run: pnpm build
         env:
-          # Public vars are inlined at build; runtime uses the real values.
-          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-key
+          # Public vars are inlined at build; the build never touches the DB.
           NEXT_PUBLIC_SITE_URL: http://localhost:3000

@@ -19,7 +19,7 @@ Web PWA ghép chuyến Hoà Lạc ↔ Hà Nội (beachhead SV). Nguồn spec: [d
 - `pnpm` bắt buộc. Không commit thẳng `main`.
 
 ## Stack
-Next.js (App Router, TS) · Supabase (Postgres/Auth/RLS/Realtime/Storage) · Tailwind + shadcn/ui · PWA · Deploy Vercel + Supabase cloud.
+Next.js (App Router, TS) · ~~Supabase · Deploy Vercel~~ → **Postgres + app trên Railway, auth email/mật khẩu** (2026-10, xem [migration plan](../260924-railway-migration/plan.md)) · Tailwind + shadcn/ui · PWA.
 
 ## Phases
 

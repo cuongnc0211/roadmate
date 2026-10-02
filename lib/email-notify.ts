@@ -1,7 +1,7 @@
 import "server-only";
 
+import { queryOne } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
-import { createAdminClient } from "@/lib/supabase/server";
 
 /**
  * Email a user for a lifecycle event, respecting their email_notifications
@@ -14,20 +14,16 @@ export async function emailUser(
   text: string,
 ): Promise<void> {
   try {
-    const admin = createAdminClient();
-    const { data: prof } = await admin
-      .from("profiles")
-      .select("email_notifications")
-      .eq("id", userId)
-      .maybeSingle();
     // Missing profile row → treat as opted-in (send). Only an explicit false skips.
-    if (prof && prof.email_notifications === false) return;
+    const row = await queryOne<{ email: string; email_notifications: boolean | null }>(
+      `select u.email, p.email_notifications
+         from users u left join profiles p on p.id = u.id
+        where u.id = $1`,
+      [userId],
+    );
+    if (!row || row.email_notifications === false) return;
 
-    const { data } = await admin.auth.admin.getUserById(userId);
-    const email = data?.user?.email;
-    if (!email) return;
-
-    await sendEmail({ to: email, subject, text });
+    await sendEmail({ to: row.email, subject, text });
   } catch (err) {
     console.error("[email-notify] failed:", err);
   }

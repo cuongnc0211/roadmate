@@ -1,67 +1,55 @@
 import { NextResponse } from "next/server";
 
-import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/session";
+import { isUuid, queryOne } from "@/lib/db";
 
 /**
  * GET /api/requests/:id/contact — reveal the counterpart's phone.
  * Only when the request is accepted AND the caller is one of the two parties.
- * Identity is taken from the session (never a param) to prevent IDOR. Phone is
- * read from profile_private via the service-role client.
+ * Identity is taken from the session (never a param) to prevent IDOR.
  */
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  if (!isUuid(id)) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
 
-  // RLS lets only the requester or the trip owner read this row.
-  const { data: req } = await supabase
-    .from("trip_requests")
-    .select("id, trip_id, requester_id, status")
-    .eq("id", id)
-    .maybeSingle();
-  if (!req) {
+  const req = await queryOne<{
+    requester_id: string;
+    status: string;
+    creator_id: string;
+  }>(
+    `select r.requester_id, r.status, t.creator_id
+       from trip_requests r join trips t on t.id = r.trip_id
+      where r.id = $1`,
+    [id],
+  );
+  // Only the requester or the trip owner may even learn the request exists.
+  if (!req || (user.id !== req.requester_id && user.id !== req.creator_id)) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
   if (req.status !== "accepted") {
     return NextResponse.json({ error: "not_accepted" }, { status: 403 });
   }
 
-  const { data: trip } = await supabase
-    .from("trips")
-    .select("creator_id")
-    .eq("id", req.trip_id)
-    .maybeSingle();
-  if (!trip) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
-  }
-
-  let counterpartId: string | null = null;
-  if (user.id === req.requester_id) counterpartId = trip.creator_id;
-  else if (user.id === trip.creator_id) counterpartId = req.requester_id;
-  if (!counterpartId) {
-    return NextResponse.json({ error: "not_party" }, { status: 403 });
-  }
-
-  const admin = createAdminClient();
-  const [{ data: profile }, { data: priv }] = await Promise.all([
-    admin.from("profiles").select("name").eq("id", counterpartId).maybeSingle(),
-    admin
-      .from("profile_private")
-      .select("phone")
-      .eq("user_id", counterpartId)
-      .maybeSingle(),
-  ]);
+  const counterpartId =
+    user.id === req.requester_id ? req.creator_id : req.requester_id;
+  const contact = await queryOne<{ name: string; phone: string | null }>(
+    `select p.name, pp.phone
+       from profiles p left join profile_private pp on pp.user_id = p.id
+      where p.id = $1`,
+    [counterpartId],
+  );
 
   return NextResponse.json({
-    name: profile?.name ?? "Ẩn danh",
-    phone: priv?.phone ?? null,
+    name: contact?.name ?? "Ẩn danh",
+    phone: contact?.phone ?? null,
   });
 }

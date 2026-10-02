@@ -4,11 +4,11 @@ import { ArrowLeft, BadgeCheck, Star } from "lucide-react";
 
 import { RouteLine } from "@/components/board/route-line";
 import { JoinCta } from "@/components/trip/join-cta";
-import { requireUser } from "@/lib/auth/guards";
+import { getUser, requireUser } from "@/lib/auth/guards";
+import { queryOne } from "@/lib/db";
 import { formatVnd } from "@/lib/format";
 import { fetchTripById } from "@/lib/trips/query";
 import { labelForDepart } from "@/lib/trips/time";
-import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({
   params,
@@ -17,8 +17,9 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   try {
-    const supabase = await createClient();
-    const trip = await fetchTripById(supabase, id);
+    const user = await getUser();
+    if (!user) return { title: "Chuyến đi" };
+    const trip = await fetchTripById(id, user.id);
     if (!trip) return { title: "Chuyến đi" };
     const { dateLabel, timeLabel } = labelForDepart(trip.depart_at);
     const route = `${trip.from_point?.name ?? "?"} → ${trip.to_point?.name ?? "?"}`;
@@ -42,20 +43,17 @@ export default async function TripDetailPage({
 }) {
   const { id } = await params;
   const user = await requireUser();
-  const supabase = await createClient();
-  const trip = await fetchTripById(supabase, id);
+  const trip = await fetchTripById(id, user.id);
   if (!trip) notFound();
 
   const { dateLabel, timeLabel } = labelForDepart(trip.depart_at);
   const isOffer = trip.type === "offer";
   const isOwner = trip.creator?.id === user.id;
 
-  const { data: myRequest } = await supabase
-    .from("trip_requests")
-    .select("id, status")
-    .eq("trip_id", id)
-    .eq("requester_id", user.id)
-    .maybeSingle();
+  const myRequest = await queryOne<{ id: string; status: string }>(
+    "select id, status from trip_requests where trip_id = $1 and requester_id = $2",
+    [trip.id, user.id],
+  );
 
   return (
     <section>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { rpcErrorStatus } from "@/lib/requests";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/session";
+import { callLifecycleRpc } from "@/lib/requests";
 
 /** POST /api/trips/:id/cancel — owner cancels; accepted passengers notified. */
 export async function POST(
@@ -9,20 +9,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const { error } = await supabase.rpc("cancel_trip", { p_trip_id: id });
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: rpcErrorStatus(error.message) },
-    );
-  }
+  const failed = await callLifecycleRpc("cancel_trip", user.id, id);
+  if (failed) return failed;
   return NextResponse.json({ ok: true });
 }
