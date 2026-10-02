@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -56,7 +55,6 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
-          <Analytics />
         </ThemeProvider>
       </body>
     </html>

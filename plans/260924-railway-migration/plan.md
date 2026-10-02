@@ -1,6 +1,6 @@
 ---
 title: "Chuyển hosting Vercel → Railway"
-status: planned
+status: in-progress
 created: 2026-09-24
 scope: infra
 blockedBy: []
@@ -37,9 +37,9 @@ Không bị ảnh hưởng: Route Handlers, middleware (`@supabase/ssr` chạy t
 ## Các bước
 
 ### Bước 1: Dọn phần phụ thuộc Vercel (code)
-- [ ] `pnpm remove @vercel/analytics`; xoá `import { Analytics }` và `<Analytics />` trong `app/layout.tsx`.
-- [ ] Xoá `vercel.json`.
-- [ ] Sửa `app/auth/callback/route.ts` để lấy origin từ header proxy:
+- [x] `pnpm remove @vercel/analytics`; xoá `import { Analytics }` và `<Analytics />` trong `app/layout.tsx`.
+- [x] Xoá `vercel.json`.
+- [x] Sửa `app/auth/callback/route.ts` để lấy origin từ header proxy:
   ```ts
   const url = new URL(request.url);
   const host = request.headers.get("x-forwarded-host") ?? url.host;
@@ -49,8 +49,8 @@ Không bị ảnh hưởng: Route Handlers, middleware (`@supabase/ssr` chạy t
   (Ưu tiên `NEXT_PUBLIC_SITE_URL` để không phải tin header. PR env thì để trống biến này.)
 
 ### Bước 2: Cấu hình Railway (config as code)
-- [ ] `next.config.mjs`: thêm `output: "standalone"`.
-- [ ] Tạo `railway.json`:
+- [x] `next.config.mjs`: thêm `output: "standalone"`.
+- [x] Tạo `railway.json`:
   ```json
   {
     "$schema": "https://railway.com/railway.schema.json",
@@ -63,14 +63,20 @@ Không bị ảnh hưởng: Route Handlers, middleware (`@supabase/ssr` chạy t
       "healthcheckPath": "/api/health",
       "healthcheckTimeout": 60,
       "restartPolicyType": "ON_FAILURE",
-      "region": "asia-southeast1-eqsg3a",
-      "numReplicas": 1
+      "multiRegionConfig": {
+        "asia-southeast1-eqsg3a": { "numReplicas": 1 }
+      }
     }
   }
   ```
   Server standalone tự đọc `PORT` do Railway cấp. Phải set `HOSTNAME=0.0.0.0` để proxy của Railway gọi được vào server.
-- [ ] Chạy thử local: `pnpm build && node .next/standalone/server.js`. Kiểm tra `/`, `/sw.js`, `/manifest.webmanifest`, `/api/health`.
+- [x] Chạy thử local: `pnpm build && node .next/standalone/server.js`. Kiểm tra `/`, `/sw.js`, `/manifest.webmanifest`, `/api/health`.
 - [ ] Lưu ý: `/api/health` trả 503 khi không gọi được Supabase, nên **deploy mới sẽ không được promote nếu Supabase đang sự cố**. Chấp nhận được cho MVP. Nếu không muốn vậy thì thêm route liveness riêng (`/api/live`, luôn trả 200) và trỏ healthcheck vào đó.
+
+> ✅ Bước 1–2 xong (2026-10-02): lint, typecheck, build xanh. Đã chạy thử standalone server ở local: `/`, `/sw.js`,
+> `/manifest.webmanifest`, `/_next/static/*`, `/legal/terms` đều trả 200. Callback redirect theo `x-forwarded-host/proto`.
+> Field `multiRegionConfig` lấy theo schema Railway nhưng chưa kiểm chứng được (sandbox không truy cập được railway.com).
+> Nếu Railway báo lỗi config, chọn region trong Settings → Deploy → Regions.
 
 ### Bước 3: Tạo project trên Railway (cần tài khoản của bạn)
 - [ ] Railway → New Project → Deploy from GitHub repo `cuongnc0211/roadmate`, branch `main`.

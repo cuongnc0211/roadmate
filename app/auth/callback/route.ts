@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/server";
  * then redirects into the app.
  */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = publicOrigin(request);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/board";
   // Only allow same-origin relative paths; reject protocol-relative (//host)
@@ -26,4 +27,22 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.redirect(`${origin}/login?error=auth`);
+}
+
+/**
+ * Public origin for redirects. Behind a proxy (Railway), `request.url` can
+ * carry the internal host (e.g. localhost:8080), so prefer the configured site
+ * URL, then the forwarded headers.
+ */
+function publicOrigin(request: Request): string {
+  const site = process.env.NEXT_PUBLIC_SITE_URL;
+  if (site) return site.replace(/\/+$/, "");
+
+  const url = new URL(request.url);
+  const host =
+    request.headers.get("x-forwarded-host")?.split(",")[0].trim() || url.host;
+  const proto =
+    request.headers.get("x-forwarded-proto")?.split(",")[0].trim() ||
+    url.protocol.replace(":", "");
+  return `${proto}://${host}`;
 }
