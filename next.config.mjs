@@ -17,6 +17,8 @@ const withPWA = withPWAInit({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Self-contained server bundle for Railway (`node .next/standalone/server.js`).
+  output: "standalone",
   // Pin the workspace root to this project (a stray ~/yarn.lock otherwise
   // makes Next infer the wrong root for output file tracing).
   outputFileTracingRoot: __dirname,
